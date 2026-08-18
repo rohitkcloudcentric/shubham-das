@@ -289,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             border-radius: 24px;
             overflow: hidden;
             margin-bottom: 20px;
-            aspect-ratio: 1 / 0.8;
+            aspect-ratio: 1 / 1;
         }
 
         .profile-img {
@@ -2372,8 +2372,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 tag: "Copado",
                 image: "images/certificates/Copado-Fundamentals-I-Badge.png",
                 description: "Demonstrates fundamental knowledge of Copado's metadata pipeline, deployment processes, version control integration, and environment management within Salesforce DevOps.",
-                date: "2024-06",
-                issuedText: "Issued Jun 2024"
+                date: "2020-06",
+                issuedText: "Issued Jun 21 2020"
             },
             {
                 title: "Fundamentals II Metadata Pipeline Certification",
@@ -2381,8 +2381,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 tag: "Copado",
                 image: "images/certificates/Copado-Fundamentals-2-Badge.png",
                 description: "Validates advanced expertise in configuring, customizing, and troubleshooting Copado's metadata pipeline, including branching strategies, quality gates, and automated testing integrations.",
-                date: "2024-10",
-                issuedText: "Issued Oct 2024"
+                date: "2020-08",
+                issuedText: "Issued Aug 8 2020"
             }
         ];
 

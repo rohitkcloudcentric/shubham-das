@@ -262,7 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
 
         .sidebar-header {
             display: flex;
-            justify-content: space-between;
+            justify-content: end;
             width: 100%;
             margin-bottom: 20px;
         }
@@ -1809,13 +1809,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
         <aside class="sidebar-column">
             <div class="profile-card">
                 <div class="sidebar-header">
-                    <button class="icon-btn" aria-label="Menu">
+                    <!-- <button class="icon-btn" aria-label="Menu">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="4" y1="12" x2="20" y2="12"></line>
                             <line x1="4" y1="6" x2="20" y2="6"></line>
                             <line x1="4" y1="18" x2="20" y2="18"></line>
                         </svg>
-                    </button>
+                    </button> -->
                     <button class="icon-btn theme-toggle" id="theme-toggle-btn" aria-label="Toggle Theme">
                         <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -1922,7 +1922,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 <p class="hero-subtitle">Hello, I’m <span class="text-blue">Shubham</span></p>
                 <h1 class="hero-title">
                     Certified Salesforce &<br>
-                    Artificial Intelligence <span class="text-blue">Consultant</span><br>
+                    AI <span class="text-blue">Consultant</span><br>
 
                 </h1>
 

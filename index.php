@@ -1,3 +1,97 @@
+<?php
+// Handle AJAX form submission to database
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset($_POST['email']) && isset($_POST['message'])) {
+    header('Content-Type: application/json');
+    
+    $host = 'localhost';
+    $db = 'local_cccinfotech';
+    $user = 'root';
+    $pass = ''; // Default XAMPP MySQL password is empty
+    $charset = 'utf8mb4';
+
+    $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+    $options = [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+    ];
+
+    try {
+        // First, check if database exists, create it if not
+        $pdo = new PDO("mysql:host=$host;charset=$charset", $user, $pass, $options);
+        $pdo->exec("CREATE DATABASE IF NOT EXISTS `$db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+        
+        // Connect to specific database
+        $pdo = new PDO($dsn, $user, $pass, $options);
+
+        // Create table if it doesn't exist
+        $createTableSQL = "CREATE TABLE IF NOT EXISTS `shubham_das_lead` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `fullname` VARCHAR(255) NOT NULL,
+            `email` VARCHAR(255) NOT NULL,
+            `message` TEXT NOT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+        $pdo->exec($createTableSQL);
+
+        // Sanitize and server-side validate inputs
+        $fullname = isset($_POST['fullname']) ? trim($_POST['fullname']) : '';
+        $email = isset($_POST['email']) ? trim($_POST['email']) : '';
+        $message = isset($_POST['message']) ? trim($_POST['message']) : '';
+
+        // Strip HTML tags for clean database storage to prevent XSS
+        $fullname = strip_tags($fullname);
+        $email = strip_tags($email);
+        $message = strip_tags($message);
+
+        // Validation errors tracker
+        $errors = [];
+
+        // 1. Fullname Validation
+        if (empty($fullname)) {
+            $errors[] = 'Full name is required.';
+        } elseif (strlen($fullname) < 2 || strlen($fullname) > 100) {
+            $errors[] = 'Full name must be between 2 and 100 characters.';
+        } elseif (!preg_match("/^[a-zA-Z\s\-']+$/", $fullname)) {
+            $errors[] = 'Full name must contain only letters, spaces, hyphens, or apostrophes.';
+        }
+
+        // 2. Email Validation
+        if (empty($email)) {
+            $errors[] = 'Email address is required.';
+        } elseif (strlen($email) > 255) {
+            $errors[] = 'Email address must not exceed 255 characters.';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors[] = 'Please provide a valid email address.';
+        }
+
+        // 3. Message Validation
+        if (empty($message)) {
+            $errors[] = 'Message is required.';
+        } elseif (strlen($message) < 10) {
+            $errors[] = 'Message must be at least 10 characters.';
+        } elseif (strlen($message) > 5000) {
+            $errors[] = 'Message must not exceed 5000 characters.';
+        }
+
+        // If there are errors, return them
+        if (!empty($errors)) {
+            echo json_encode(['status' => 'error', 'message' => implode(' ', $errors)]);
+            exit;
+        }
+
+        // Insert lead record
+        $stmt = $pdo->prepare("INSERT INTO `shubham_das_lead` (`fullname`, `email`, `message`) VALUES (?, ?, ?)");
+        $stmt->execute([$fullname, $email, $message]);
+
+        echo json_encode(['status' => 'success', 'message' => 'Your message has been stored in local database successfully!']);
+        exit;
+    } catch (\PDOException $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Database connection failed: ' . $e->getMessage()]);
+        exit;
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -26,6 +120,10 @@
             --btn-text-secondary: #0f172a;
             --badge-bg: #ffffff;
             --services-sidebar-bg: #f1f5f9;
+            --color-error: #ef4444;
+            --color-error-light: rgba(239, 68, 68, 0.15);
+            --color-success: #10b981;
+            --color-success-light: rgba(16, 185, 129, 0.15);
         }
 
         [data-theme="dark"] {
@@ -43,6 +141,10 @@
             --btn-text-secondary: #f3f4f6;
             --badge-bg: #1e293b;
             --services-sidebar-bg: #0b0f19;
+            --color-error: #f87171;
+            --color-error-light: rgba(248, 113, 113, 0.15);
+            --color-success: #34d399;
+            --color-success-light: rgba(52, 211, 153, 0.15);
         }
 
         * {
@@ -124,16 +226,16 @@
             border-radius: 24px;
             overflow: hidden;
             margin-bottom: 20px;
-            aspect-ratio: 1 / 1.05;
+            aspect-ratio: 1 / 1.2;
         }
 
         .profile-img {
-            width: 100%;
+            /* width: 100%;
             height: 100%;
             object-fit: cover;
             display: block;
             transform: scale(1.1);
-            transform-origin: 50% 25%;
+            transform-origin: 50% 25%; */
         }
 
         .profile-name {
@@ -742,6 +844,191 @@
             transform: translateX(3px);
         }
 
+        /* Form Validation Custom Styles */
+        .form-group {
+            position: relative;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            border: 1px solid var(--border-color);
+            transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
+        }
+
+        /* Error States */
+        .form-group.has-error input,
+        .form-group.has-error textarea {
+            border-color: var(--color-error) !important;
+        }
+
+        .form-group.has-error input:focus,
+        .form-group.has-error textarea:focus {
+            box-shadow: 0 0 0 3px var(--color-error-light) !important;
+            border-color: var(--color-error) !important;
+        }
+
+        /* Success States */
+        .form-group.has-success input,
+        .form-group.has-success textarea {
+            border-color: var(--color-success) !important;
+        }
+
+        .form-group.has-success input:focus,
+        .form-group.has-success textarea:focus {
+            box-shadow: 0 0 0 3px var(--color-success-light) !important;
+            border-color: var(--color-success) !important;
+        }
+
+        /* Error message text */
+        .error-message {
+            display: none;
+            color: var(--color-error);
+            font-size: 11px;
+            font-weight: 500;
+            margin-top: 5px;
+            margin-left: 4px;
+            align-items: center;
+            gap: 6px;
+            animation: formErrorFadeIn 0.25s ease-out forwards;
+        }
+
+        .form-group.has-error .error-message {
+            display: flex;
+        }
+
+        @keyframes formErrorFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Form Success Screen Style */
+        .form-success-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            animation: successContainerFadeIn 0.5s ease-out forwards;
+        }
+
+        @keyframes successContainerFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .success-icon-wrapper {
+            width: 72px;
+            height: 72px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Checkmark Animation */
+        .checkmark {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            display: block;
+            stroke-width: 3;
+            stroke: var(--color-success);
+            stroke-miterlimit: 10;
+            box-shadow: inset 0px 0px 0px var(--color-success);
+            animation: fillCheckmark .4s ease-in-out .4s forwards, scaleCheckmark .3s ease-in-out .9s forwards;
+        }
+
+        .checkmark__circle {
+            stroke-dasharray: 166;
+            stroke-dashoffset: 166;
+            stroke-width: 3;
+            stroke-miterlimit: 10;
+            stroke: var(--color-success);
+            fill: none;
+            animation: strokeCheckmark 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+        }
+
+        .checkmark__check {
+            transform-origin: 50% 50%;
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            stroke: #ffffff;
+            animation: strokeCheckmark 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+        }
+
+        @keyframes strokeCheckmark {
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        @keyframes scaleCheckmark {
+            0%, 100% {
+                transform: none;
+            }
+            50% {
+                transform: scale3d(1.15, 1.15, 1);
+            }
+        }
+
+        @keyframes fillCheckmark {
+            100% {
+                box-shadow: inset 0px 0px 0px 40px var(--color-success);
+            }
+        }
+
+        .success-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .success-subtitle {
+            font-size: 13.5px;
+            color: var(--text-secondary);
+            max-width: 380px;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .success-btn {
+            background: var(--btn-bg-secondary);
+            color: var(--btn-text-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+            padding: 10px 24px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-speed);
+            font-family: inherit;
+        }
+
+        .success-btn:hover {
+            background: var(--accent-blue);
+            color: #ffffff;
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
         /* Responsive Breakpoints */
         @media (min-width: 993px) and (max-width: 1200px) {
             .app-layout {
@@ -1261,18 +1548,43 @@
 
                 <!-- Contact Form CTA -->
                 <div class="contact-form-section">
-                    <h3 class="form-title">Let's make your project brilliant!</h3>
-                    <form class="project-contact-form" id="contact-form" action="#" method="POST">
+                    <h3 class="form-title" id="form-section-title">Let's make your project brilliant!</h3>
+                    
+                    <form class="project-contact-form" id="contact-form" action="#" method="POST" novalidate>
                         <div class="form-row">
                             <div class="form-group">
                                 <input type="text" id="fullname" name="fullname" placeholder="Full Name" required>
+                                <div class="error-message" id="fullname-error">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                    </svg>
+                                    <span>Please enter your full name (minimum 2 characters).</span>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <input type="email" id="email" name="email" placeholder="Email Address" required>
+                                <div class="error-message" id="email-error">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                    </svg>
+                                    <span>Please enter a valid email address.</span>
+                                </div>
                             </div>
                         </div>
                         <div class="form-group">
                             <textarea id="message" name="message" placeholder="Your Message" required></textarea>
+                            <div class="error-message" id="message-error">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <span>Please enter a message (minimum 10 characters).</span>
+                            </div>
                         </div>
                         <button type="submit" class="submit-btn">
                             <span>SEND MESSAGE</span>
@@ -1282,6 +1594,19 @@
                             </svg>
                         </button>
                     </form>
+
+                    <!-- Success Message Block -->
+                    <div class="form-success-container" id="form-success">
+                        <div class="success-icon-wrapper">
+                            <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                                <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                                <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                            </svg>
+                        </div>
+                        <h4 class="success-title">Message Sent!</h4>
+                        <p class="success-subtitle">Thank you for reaching out. Your message has been sent successfully, and Shubham will get back to you shortly.</p>
+                        <button type="button" class="success-btn" id="success-reset-btn">Send Another Message</button>
+                    </div>
                 </div>
             </section>
         </main>
@@ -1460,6 +1785,141 @@
 
         // Center active link on initial load
         window.addEventListener('load', centerActiveNavLink);
+
+        // Contact Form Validation and Submission Handling
+        const form = document.getElementById('contact-form');
+        const successBlock = document.getElementById('form-success');
+        const formTitle = document.getElementById('form-section-title');
+        const resetBtn = document.getElementById('success-reset-btn');
+
+        const fields = {
+            fullname: {
+                input: document.getElementById('fullname'),
+                validate: (val) => val.trim().length >= 2,
+                dirty: false
+            },
+            email: {
+                input: document.getElementById('email'),
+                validate: (val) => {
+                    const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                    return re.test(val.trim());
+                },
+                dirty: false
+            },
+            message: {
+                input: document.getElementById('message'),
+                validate: (val) => val.trim().length >= 10,
+                dirty: false
+            }
+        };
+
+        function validateField(fieldKey) {
+            const field = fields[fieldKey];
+            const value = field.input.value;
+            const parent = field.input.parentElement;
+            
+            // Only validate if it's dirty (user has typed or left the input)
+            if (!field.dirty) return true;
+
+            const isValid = field.validate(value);
+            if (isValid) {
+                parent.classList.remove('has-error');
+                parent.classList.add('has-success');
+            } else {
+                parent.classList.remove('has-success');
+                parent.classList.add('has-error');
+            }
+            return isValid;
+        }
+
+        // Attach listeners for real-time validation
+        Object.keys(fields).forEach(key => {
+            const field = fields[key];
+
+            // Mark field as dirty on input and validate
+            field.input.addEventListener('input', () => {
+                field.dirty = true;
+                validateField(key);
+            });
+
+            // Mark field as dirty on blur and validate
+            field.input.addEventListener('blur', () => {
+                field.dirty = true;
+                validateField(key);
+            });
+        });
+
+        // Submit listener
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            // Mark all fields as dirty to trigger validation messages
+            let isFormValid = true;
+            Object.keys(fields).forEach(key => {
+                fields[key].dirty = true;
+                const isValid = validateField(key);
+                if (!isValid) {
+                    isFormValid = false;
+                }
+            });
+
+            if (isFormValid) {
+                const submitBtn = form.querySelector('.submit-btn');
+                const btnText = submitBtn.querySelector('span');
+                const originalText = btnText.textContent;
+                
+                // Show loading state
+                submitBtn.disabled = true;
+                btnText.textContent = 'SENDING...';
+                
+                const formData = new FormData(form);
+
+                fetch('index.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    submitBtn.disabled = false;
+                    btnText.textContent = originalText;
+
+                    if (data.status === 'success') {
+                        // Hide the form and form section title, show success screen
+                        form.style.display = 'none';
+                        formTitle.style.display = 'none';
+                        successBlock.style.display = 'flex';
+                    } else {
+                        // Display error message nicely
+                        alert(data.message || 'An error occurred. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    submitBtn.disabled = false;
+                    btnText.textContent = originalText;
+                    console.error('Submission error:', error);
+                    alert('Could not submit form. Please verify local database connectivity.');
+                });
+            }
+        });
+
+        // Reset button listener to send another message
+        resetBtn.addEventListener('click', () => {
+            // Reset fields
+            Object.keys(fields).forEach(key => {
+                const field = fields[key];
+                field.input.value = '';
+                field.dirty = false;
+                
+                const parent = field.input.parentElement;
+                parent.classList.remove('has-error');
+                parent.classList.remove('has-success');
+            });
+
+            // Reset visibility
+            successBlock.style.display = 'none';
+            form.style.display = 'flex';
+            formTitle.style.display = 'block';
+        });
     </script>
 </body>
 

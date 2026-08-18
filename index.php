@@ -3,92 +3,156 @@
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset($_POST['email']) && isset($_POST['message'])) {
     header('Content-Type: application/json');
     
-    $host = 'localhost';
-    $db = 'local_cccinfotech';
-    $user = 'root';
-    $pass = ''; // Default XAMPP MySQL password is empty
-    $charset = 'utf8mb4';
+    // Check if we are inside the WordPress environment on the live server
+    // Path on live server: /var/www/html/new.cccinfotech.com/profile/shubham-das/index.php
+    // WordPress wp-load.php is at: /var/www/html/new.cccinfotech.com/wp-load.php (3 levels up)
+    $wp_load_path = dirname(dirname(dirname(__FILE__))) . '/wp-load.php';
+    
+    $fullname = isset($_POST['fullname']) ? trim($_POST['fullname']) : '';
+    $email = isset($_POST['email']) ? trim($_POST['email']) : '';
+    $message = isset($_POST['message']) ? trim($_POST['message']) : '';
 
-    $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
-    $options = [
-        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES   => false,
-    ];
+    if (file_exists($wp_load_path)) {
+        // --- 1. WORDPRESS LIVE ENVIRONMENT ---
+        define('WP_USE_THEMES', false);
+        require_once($wp_load_path);
+        global $wpdb;
 
-    try {
-        // First, check if database exists, create it if not
-        $pdo = new PDO("mysql:host=$host;charset=$charset", $user, $pass, $options);
-        $pdo->exec("CREATE DATABASE IF NOT EXISTS `$db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-        
-        // Connect to specific database
-        $pdo = new PDO($dsn, $user, $pass, $options);
+        // Sanitize using WordPress core functions
+        $fullname = sanitize_text_field($fullname);
+        $email = sanitize_email($email);
+        $message = sanitize_textarea_field($message);
 
-        // Create table if it doesn't exist
-        $createTableSQL = "CREATE TABLE IF NOT EXISTS `shubham_das_lead` (
-            `id` INT AUTO_INCREMENT PRIMARY KEY,
-            `fullname` VARCHAR(255) NOT NULL,
-            `email` VARCHAR(255) NOT NULL,
-            `message` TEXT NOT NULL,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
-        $pdo->exec($createTableSQL);
-
-        // Sanitize and server-side validate inputs
-        $fullname = isset($_POST['fullname']) ? trim($_POST['fullname']) : '';
-        $email = isset($_POST['email']) ? trim($_POST['email']) : '';
-        $message = isset($_POST['message']) ? trim($_POST['message']) : '';
-
-        // Strip HTML tags for clean database storage to prevent XSS
-        $fullname = strip_tags($fullname);
-        $email = strip_tags($email);
-        $message = strip_tags($message);
-
-        // Validation errors tracker
+        // Validation constraints
         $errors = [];
-
-        // 1. Fullname Validation
-        if (empty($fullname)) {
-            $errors[] = 'Full name is required.';
-        } elseif (strlen($fullname) < 2 || strlen($fullname) > 100) {
-            $errors[] = 'Full name must be between 2 and 100 characters.';
-        } elseif (!preg_match("/^[a-zA-Z\s\-']+$/", $fullname)) {
-            $errors[] = 'Full name must contain only letters, spaces, hyphens, or apostrophes.';
+        if (empty($fullname) || strlen($fullname) < 2) {
+            $errors[] = 'Full name must be at least 2 characters.';
         }
-
-        // 2. Email Validation
-        if (empty($email)) {
-            $errors[] = 'Email address is required.';
-        } elseif (strlen($email) > 255) {
-            $errors[] = 'Email address must not exceed 255 characters.';
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (empty($email) || !is_email($email)) {
             $errors[] = 'Please provide a valid email address.';
         }
-
-        // 3. Message Validation
-        if (empty($message)) {
-            $errors[] = 'Message is required.';
-        } elseif (strlen($message) < 10) {
+        if (empty($message) || strlen($message) < 10) {
             $errors[] = 'Message must be at least 10 characters.';
-        } elseif (strlen($message) > 5000) {
-            $errors[] = 'Message must not exceed 5000 characters.';
         }
 
-        // If there are errors, return them
         if (!empty($errors)) {
             echo json_encode(['status' => 'error', 'message' => implode(' ', $errors)]);
             exit;
         }
 
-        // Insert lead record
-        $stmt = $pdo->prepare("INSERT INTO `shubham_das_lead` (`fullname`, `email`, `message`) VALUES (?, ?, ?)");
-        $stmt->execute([$fullname, $email, $message]);
+        // Target database table name
+        $table_name = 'shubham_das_lead';
+        $charset_collate = $wpdb->get_charset_collate();
 
-        echo json_encode(['status' => 'success', 'message' => 'Your message has been stored in local database successfully!']);
+        // Create table in the WordPress database if it doesn't exist
+        $createTableSQL = "CREATE TABLE IF NOT EXISTS `$table_name` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `fullname` VARCHAR(255) NOT NULL,
+            `email` VARCHAR(255) NOT NULL,
+            `message` TEXT NOT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) $charset_collate;";
+
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($createTableSQL);
+
+        // Insert lead entry via WordPress DB abstraction
+        $inserted = $wpdb->insert(
+            $table_name,
+            [
+                'fullname' => $fullname,
+                'email'    => $email,
+                'message'  => $message
+            ],
+            ['%s', '%s', '%s']
+        );
+
+        if ($inserted !== false) {
+            echo json_encode(['status' => 'success', 'message' => 'Your message has been stored in database successfully!']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to save lead: ' . $wpdb->last_error]);
+        }
         exit;
-    } catch (\PDOException $e) {
-        echo json_encode(['status' => 'error', 'message' => 'Database connection failed: ' . $e->getMessage()]);
-        exit;
+
+    } else {
+        // --- 2. LOCAL XAMPP ENVIRONMENT (PDO FALLBACK) ---
+        $host = 'localhost';
+        $db = 'local_cccinfotech';
+        $user = 'root';
+        $pass = ''; // Default XAMPP MySQL password is empty
+        $charset = 'utf8mb4';
+
+        $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+        $options = [
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES   => false,
+        ];
+
+        try {
+            // Check and create local database
+            $pdo = new PDO("mysql:host=$host;charset=$charset", $user, $pass, $options);
+            $pdo->exec("CREATE DATABASE IF NOT EXISTS `$db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            
+            // Connect to local database
+            $pdo = new PDO($dsn, $user, $pass, $options);
+
+            // Create local table if it doesn't exist
+            $createTableSQL = "CREATE TABLE IF NOT EXISTS `shubham_das_lead` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `fullname` VARCHAR(255) NOT NULL,
+                `email` VARCHAR(255) NOT NULL,
+                `message` TEXT NOT NULL,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+            $pdo->exec($createTableSQL);
+
+            // Strip HTML tags for clean database storage to prevent XSS
+            $fullname = strip_tags($fullname);
+            $email = strip_tags($email);
+            $message = strip_tags($message);
+
+            // Validation checks
+            $errors = [];
+            if (empty($fullname)) {
+                $errors[] = 'Full name is required.';
+            } elseif (strlen($fullname) < 2 || strlen($fullname) > 100) {
+                $errors[] = 'Full name must be between 2 and 100 characters.';
+            } elseif (!preg_match("/^[a-zA-Z\s\-']+$/", $fullname)) {
+                $errors[] = 'Full name must contain only letters, spaces, hyphens, or apostrophes.';
+            }
+
+            if (empty($email)) {
+                $errors[] = 'Email address is required.';
+            } elseif (strlen($email) > 255) {
+                $errors[] = 'Email address must not exceed 255 characters.';
+            } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = 'Please provide a valid email address.';
+            }
+
+            if (empty($message)) {
+                $errors[] = 'Message is required.';
+            } elseif (strlen($message) < 10) {
+                $errors[] = 'Message must be at least 10 characters.';
+            } elseif (strlen($message) > 5000) {
+                $errors[] = 'Message must not exceed 5000 characters.';
+            }
+
+            if (!empty($errors)) {
+                echo json_encode(['status' => 'error', 'message' => implode(' ', $errors)]);
+                exit;
+            }
+
+            // Insert lead record
+            $stmt = $pdo->prepare("INSERT INTO `shubham_das_lead` (`fullname`, `email`, `message`) VALUES (?, ?, ?)");
+            $stmt->execute([$fullname, $email, $message]);
+
+            echo json_encode(['status' => 'success', 'message' => 'Your message has been stored in local database successfully!']);
+            exit;
+        } catch (\PDOException $e) {
+            echo json_encode(['status' => 'error', 'message' => 'Database connection failed: ' . $e->getMessage()]);
+            exit;
+        }
     }
 }
 ?>
@@ -1888,6 +1952,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                         form.style.display = 'none';
                         formTitle.style.display = 'none';
                         successBlock.style.display = 'flex';
+
+                        // Automatically reset and show the form again after 20 seconds
+                        setTimeout(() => {
+                            if (successBlock.style.display === 'flex') {
+                                resetBtn.click();
+                            }
+                        }, 20000);
                     } else {
                         // Display error message nicely
                         alert(data.message || 'An error occurred. Please try again.');

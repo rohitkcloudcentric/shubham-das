@@ -2,12 +2,12 @@
 // Handle AJAX form submission to database
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset($_POST['email']) && isset($_POST['message'])) {
     header('Content-Type: application/json');
-    
+
     // Check if we are inside the WordPress environment on the live server
     // Path on live server: /var/www/html/new.cccinfotech.com/profile/shubham-das/index.php
     // WordPress wp-load.php is at: /var/www/html/new.cccinfotech.com/wp-load.php (3 levels up)
     $wp_load_path = dirname(dirname(dirname(__FILE__))) . '/wp-load.php';
-    
+
     $fullname = isset($_POST['fullname']) ? trim($_POST['fullname']) : '';
     $email = isset($_POST['email']) ? trim($_POST['email']) : '';
     $message = isset($_POST['message']) ? trim($_POST['message']) : '';
@@ -73,7 +73,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             echo json_encode(['status' => 'error', 'message' => 'Failed to save lead: ' . $wpdb->last_error]);
         }
         exit;
-
     } else {
         // --- 2. LOCAL XAMPP ENVIRONMENT (PDO FALLBACK) ---
         $host = 'localhost';
@@ -93,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             // Check and create local database
             $pdo = new PDO("mysql:host=$host;charset=$charset", $user, $pass, $options);
             $pdo->exec("CREATE DATABASE IF NOT EXISTS `$db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-            
+
             // Connect to local database
             $pdo = new PDO($dsn, $user, $pass, $options);
 
@@ -290,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             border-radius: 24px;
             overflow: hidden;
             margin-bottom: 20px;
-            aspect-ratio: 1 / 1.2;
+            aspect-ratio: 1 / 0.8;
         }
 
         .profile-img {
@@ -322,7 +321,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             font-size: 12.5px;
             line-height: 1.5;
             color: var(--text-secondary);
-            margin-bottom: 20px;
+            /* margin-bottom: 20px; */
         }
 
         .profile-socials {
@@ -387,7 +386,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin-top: 24px;
+            margin: 20px 0px;
             justify-content: center;
         }
 
@@ -573,29 +572,478 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
         }
 
         /* Certifications section */
-        .certifications-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+        .certs-container {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+            transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .certs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+
+        .certs-count-box {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .certs-count-number {
+            font-size: 20px;
+            color: var(--accent-blue);
+        }
+
+        .certs-controls {
+            display: flex;
             gap: 16px;
-            margin-top: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .certs-search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .certs-search-wrapper .search-icon {
+            position: absolute;
+            left: 14px;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .certs-search-wrapper input {
+            padding: 10px 16px 10px 40px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 13.5px;
+            width: 240px;
+            transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+        }
+
+        .certs-search-wrapper input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(0, 160, 227, 0.15);
+            background-color: var(--bg-card);
+        }
+
+        .certs-sort-wrapper select {
+            padding: 10px 36px 10px 16px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 13.5px;
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+        }
+
+        [data-theme="dark"] .certs-sort-wrapper select {
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        }
+
+        .certs-sort-wrapper select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(0, 160, 227, 0.15);
+            background-color: var(--bg-card);
+        }
+
+        .certs-groups {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Product Group Panel */
+        .cert-group-panel {
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+            background-color: var(--bg-card);
+            transition: border-color 0.3s;
+        }
+
+        .cert-group-header {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            background: none;
+            border: none;
+            text-align: left;
+            cursor: pointer;
+            gap: 14px;
+            transition: background-color 0.2s;
+            user-select: none;
+        }
+
+        .cert-group-header:hover {
+            background-color: rgba(0, 160, 227, 0.04);
+        }
+
+        [data-theme="dark"] .cert-group-header:hover {
+            background-color: rgba(56, 189, 248, 0.04);
+        }
+
+        .cert-group-header .group-chevron {
+            color: var(--text-muted);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+        }
+
+        .cert-group-panel.collapsed .group-chevron {
+            transform: rotate(-90deg);
+        }
+
+        .cert-group-header .group-icon-wrapper {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: var(--accent-blue);
+            transition: background-color 0.3s;
+        }
+
+        .cert-group-header .group-icon-wrapper svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .cert-group-header .group-icon-wrapper img {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+        }
+
+        .cert-group-header .group-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .cert-group-header .group-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-family: inherit;
+        }
+
+        .cert-group-header .group-count {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Expandable content area */
+        .cert-group-content {
+            max-height: 1500px;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s;
+            border-top: 1px solid var(--border-color);
+            padding: 8px 0;
+        }
+
+        .cert-group-panel.collapsed .cert-group-content {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            border-top-color: transparent;
+        }
+
+        /* Certificate Item row */
+        .cert-row {
+            display: flex;
+            padding: 24px 30px;
+            gap: 24px;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.2s, transform 0.2s;
+            position: relative;
+        }
+
+        .cert-row:last-child {
+            border-bottom: none;
+        }
+
+        .cert-row:hover {
+            background-color: rgba(0, 0, 0, 0.01);
+            transform: translateX(4px);
+        }
+
+        [data-theme="dark"] .cert-row:hover {
+            background-color: rgba(255, 255, 255, 0.01);
+        }
+
+        .cert-badge-wrapper {
+            width: 80px;
+            height: 80px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
             justify-content: center;
         }
 
-        .cert-item {
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        .cert-badge-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.08));
             transition: transform var(--transition-speed);
         }
 
-        .cert-item img {
-            width: 100%;
-            height: auto;
-            max-width: 90px;
+        .cert-row:hover .cert-badge-wrapper img {
+            transform: scale(1.06) rotate(1deg);
         }
 
-        .cert-item:hover {
-            transform: scale(1.08);
+        .cert-details {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .cert-product-tag {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .cert-title-link {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--accent-blue);
+            text-decoration: none;
+            line-height: 1.3;
+            transition: color var(--transition-speed);
+        }
+
+        .cert-title-link:hover {
+            color: var(--accent-blue-hover);
+        }
+
+        .cert-achieved {
+            font-size: 12.5px;
+            color: var(--text-secondary);
+        }
+
+        .cert-description {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            line-height: 1.5;
+        }
+
+        .cert-date {
+            font-size: 12px;
+            color: var(--text-muted);
+            align-self: flex-end;
+            margin-top: 10px;
+            font-weight: 500;
+        }
+
+        /* Responsive styling */
+        @media (max-width: 640px) {
+            .certs-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+
+            .certs-controls {
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .certs-search-wrapper input {
+                width: 100%;
+            }
+
+            .certs-sort-wrapper select {
+                width: 100%;
+            }
+
+            .cert-row {
+                flex-direction: column;
+                padding: 20px;
+                gap: 16px;
+            }
+
+            .cert-badge-wrapper {
+                width: 70px;
+                height: 70px;
+                align-self: flex-start;
+            }
+
+            .cert-date {
+                align-self: flex-start;
+                margin-top: 8px;
+            }
+        }
+
+        /* Empty/No Results state */
+        .certs-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 24px;
+            text-align: center;
+            color: var(--text-muted);
+            gap: 12px;
+        }
+
+        .certs-empty-icon {
+            color: var(--text-muted);
+            opacity: 0.5;
+        }
+
+        .certs-empty-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .certs-empty-desc {
+            font-size: 13px;
+            max-width: 320px;
+        }
+
+        /* Copado Specific styles */
+        .cert-product-tag[data-tag="Copado"] {
+            color: #00B2A9 !important;
+        }
+
+        .cert-title-link[data-tag="Copado"] {
+            color: #00B2A9;
+        }
+
+        .cert-title-link[data-tag="Copado"]:hover {
+            color: #00807a;
+        }
+
+        /* Modal Overlay Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(15, 23, 42, 0.6);
+            /* Slate backdrop */
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-container {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 28px;
+            width: 100%;
+            max-width: 650px;
+            padding: 40px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-overlay.active .modal-container {
+            transform: scale(1);
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background var(--transition-speed), color var(--transition-speed);
+        }
+
+        .modal-close-btn:hover {
+            background: var(--btn-bg-secondary);
+            color: var(--text-primary);
+        }
+
+        /* Contact CTA Block (replaces form inline) */
+        .contact-cta-block {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-top: 40px;
+            box-shadow: var(--card-shadow);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .contact-cta-block .form-title {
+            margin-bottom: 0;
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .contact-cta-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            max-width: 480px;
+            line-height: 1.6;
         }
 
         /* Services section */
@@ -735,8 +1183,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
         .clients-slider-list {
             display: flex;
             align-items: center;
-            gap: 60px;
-            padding-right: 60px;
+            gap: 30px;
+            padding-right: 30px;
         }
 
         .client-logo-wrapper {
@@ -744,17 +1192,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             justify-content: center;
             align-items: center;
             flex-shrink: 0;
+            background-color: #ffffff;
+            padding: 10px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+        }
+
+        .client-logo-wrapper:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+        }
+
+        .client-logo-wrapper.logo-bg-gray {
+            background-color: #334155 !important;
+            border-color: rgba(255, 255, 255, 0.1);
         }
 
         .client-logo {
             height: 32px;
-            max-width: 130px;
+            max-width: 110px;
             object-fit: contain;
-            transition: transform var(--transition-speed);
-        }
-
-        .client-logo:hover {
-            transform: scale(1.08);
+            display: block;
         }
 
         @keyframes marquee {
@@ -965,6 +1425,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 opacity: 0;
                 transform: translateY(-4px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -991,6 +1452,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 opacity: 0;
                 transform: scale(0.95);
             }
+
             to {
                 opacity: 1;
                 transform: scale(1);
@@ -1044,9 +1506,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
         }
 
         @keyframes scaleCheckmark {
-            0%, 100% {
+
+            0%,
+            100% {
                 transform: none;
             }
+
             50% {
                 transform: scale3d(1.15, 1.15, 1);
             }
@@ -1245,12 +1710,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             }
 
             .clients-slider-list {
-                gap: 40px;
-                padding-right: 40px;
+                gap: 20px;
+                padding-right: 20px;
+            }
+
+            .client-logo-wrapper {
+                padding: 6px 12px;
+                border-radius: 8px;
             }
 
             .client-logo {
-                height: 26px;
+                height: 22px;
+                max-width: 80px;
             }
         }
 
@@ -1300,12 +1771,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             }
 
             .clients-slider-list {
-                gap: 30px;
-                padding-right: 30px;
+                gap: 15px;
+                padding-right: 15px;
+            }
+
+            .client-logo-wrapper {
+                padding: 4px 8px;
+                border-radius: 6px;
             }
 
             .client-logo {
-                height: 22px;
+                height: 18px;
+                max-width: 60px;
             }
 
             .contact-card {
@@ -1364,6 +1841,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 <p class="profile-desc">
                     10x Certified | Sales, Service, Marketing & Data Cloud + Agentforce | Apex • LWC | HubSpot | Helping businesses turn CRM into revenue
                 </p>
+                <!-- Technology Skill Badges -->
+                <div class="tech-badges">
+                    <div class="tech-badge">
+                        <img src="images/salesforce-icons/sales-cloud.svg" alt="Sales Cloud">
+                        <span>Sales Cloud</span>
+                    </div>
+                    <div class="tech-badge">
+                        <img src="images/salesforce-icons/service-cloud.svg" alt="Service Cloud">
+                        <span>Service Cloud</span>
+                    </div>
+                    <div class="tech-badge">
+                        <img src="images/salesforce-icons/marketing-cloud.svg" alt="Marketing Cloud">
+                        <span>Marketing Cloud</span>
+                    </div>
+                    <div class="tech-badge">
+                        <img src="images/salesforce-icons/data-cloud.svg" alt="Data Cloud">
+                        <span>Data Cloud</span>
+                    </div>
+                    <div class="tech-badge">
+                        <img src="images/salesforce-icons/experience-cloud.svg" alt="Experience Cloud">
+                        <span>Experience Cloud</span>
+                    </div>
+                    <div class="tech-badge">
+                        <img src="images/salesforce-icons/agentforce-icon.svg" alt="Agentforce">
+                        <span>Agentforce</span>
+                    </div>
+                    <div class="tech-badge">
+                        <img src="images/salesforce-icons/salesforce-icon.svg" alt="Apex">
+                        <span>Apex</span>
+                    </div>
+                    <div class="tech-badge">
+                        <img src="images/salesforce-icons/lwc-icon.svg" alt="LWC">
+                        <span>LWC</span>
+                    </div>
+                    <div class="tech-badge">
+                        <img src="images/salesforce-icons/hubspot-icon.svg" alt="HubSpot">
+                        <span>HubSpot</span>
+                    </div>
+                </div>
                 <div class="profile-socials">
                     <a href="https://wa.me/+919583162067" target="_blank" class="social-link" title="WhatsApp">
                         <img src="images/social-media/whatsapp.svg" alt="WhatsApp">
@@ -1381,48 +1897,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                         <img src="images/social-media/web.svg" alt="Website">
                     </a>
                 </div>
-                <a href="https://wa.me/+919583162067" target="_blank" class="consultation-btn">Get Free Consultation</a>
+                <a href="#" class="consultation-btn" id="open-consultation-btn">Get Free Consultation</a>
             </div>
 
-            <!-- Technology Skill Badges -->
-            <div class="tech-badges">
-                <div class="tech-badge">
-                    <img src="images/salesforce-icons/sales-cloud.svg" alt="Sales Cloud">
-                    <span>Sales Cloud</span>
-                </div>
-                <div class="tech-badge">
-                    <img src="images/salesforce-icons/service-cloud.svg" alt="Service Cloud">
-                    <span>Service Cloud</span>
-                </div>
-                <div class="tech-badge">
-                    <img src="images/salesforce-icons/marketing-cloud.svg" alt="Marketing Cloud">
-                    <span>Marketing Cloud</span>
-                </div>
-                <div class="tech-badge">
-                    <img src="images/salesforce-icons/data-cloud.svg" alt="Data Cloud">
-                    <span>Data Cloud</span>
-                </div>
-                <div class="tech-badge">
-                    <img src="images/salesforce-icons/experience-cloud.svg" alt="Experience Cloud">
-                    <span>Experience Cloud</span>
-                </div>
-                <div class="tech-badge">
-                    <img src="images/salesforce-icons/agentforce-icon.svg" alt="Agentforce">
-                    <span>Agentforce</span>
-                </div>
-                <div class="tech-badge">
-                    <img src="images/salesforce-icons/salesforce-icon.svg" alt="Apex">
-                    <span>Apex</span>
-                </div>
-                <div class="tech-badge">
-                    <img src="images/salesforce-icons/lwc-icon.svg" alt="LWC">
-                    <span>LWC</span>
-                </div>
-                <div class="tech-badge">
-                    <img src="images/salesforce-icons/hubspot-icon.svg" alt="HubSpot">
-                    <span>HubSpot</span>
-                </div>
-            </div>
+
         </aside>
 
         <!-- Content Column -->
@@ -1432,6 +1910,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 <nav class="nav-pill-container" id="main-nav">
                     <a href="#about" class="nav-link active">About</a>
                     <a href="#certifications" class="nav-link">Certifications</a>
+                    <!-- <a href="#copado-certifications" class="nav-link">Copado Certs</a> -->
                     <a href="#services" class="nav-link">Services</a>
                     <a href="#clients" class="nav-link">Clients</a>
                     <a href="#contact" class="nav-link">Contact</a>
@@ -1443,8 +1922,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 <p class="hero-subtitle">Hello, I’m <span class="text-blue">Shubham</span></p>
                 <h1 class="hero-title">
                     Certified Salesforce &<br>
-                    Artificial Intelligence <span class="consultant-pill">Consultant</span><br>
-                    Based in Noida, India.
+                    Artificial Intelligence <span class="text-blue">Consultant</span><br>
+
                 </h1>
 
                 <!-- Statistics Row -->
@@ -1476,33 +1955,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             <section id="certifications" class="content-section">
                 <h2 class="section-title">CERTIFICATIONS</h2>
                 <hr class="section-divider">
-                <div class="certifications-grid">
-                    <div class="cert-item" title="Certified Agentforce Specialist">
-                        <img src="images/certificates/agentforce-specialist.svg" alt="Certified Agentforce Specialist">
+
+                <!-- Certifications Interactive Container -->
+                <div class="certs-container">
+                    <!-- Header with count, search and sort -->
+                    <div class="certs-header">
+                        <div class="certs-count-box">
+                            <span class="certs-count-number" id="certs-count">12</span> Certifications
+                        </div>
+                        <div class="certs-controls">
+                            <div class="certs-search-wrapper">
+                                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                                <input type="text" id="cert-search" placeholder="Quick search" aria-label="Search Certifications">
+                            </div>
+                            <div class="certs-sort-wrapper">
+                                <select id="cert-sort" aria-label="Sort Certifications">
+                                    <option value="product-asc">Sort by Product (A-Z)</option>
+                                    <option value="product-desc">Sort by Product (Z-A)</option>
+                                    <option value="date-desc">Sort by Date (Newest first)</option>
+                                    <option value="date-asc">Sort by Date (Oldest first)</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div class="cert-item" title="Certified AI Associate">
-                        <img src="images/certificates/ai-associate.svg" alt="Certified AI Associate">
-                    </div>
-                    <div class="cert-item" title="Certified Data 360 Consultant">
-                        <img src="images/certificates/data-360-consultant.svg" alt="Certified Data 360 Consultant">
-                    </div>
-                    <div class="cert-item" title="Certified Platform Administrator">
-                        <img src="images/certificates/platform-administrator.svg" alt="Certified Platform Administrator">
-                    </div>
-                    <div class="cert-item" title="Certified Platform Developer">
-                        <img src="images/certificates/platform-developer.svg" alt="Certified Platform Developer">
-                    </div>
-                    <div class="cert-item" title="Certified Platform Developer II">
-                        <img src="images/certificates/platform-developer-2.svg" alt="Certified Platform Developer II">
-                    </div>
-                    <div class="cert-item" title="Certified Platform Foundations">
-                        <img src="images/certificates/platform-foundations.svg" alt="Certified Platform Foundations">
-                    </div>
-                    <div class="cert-item" title="Certified Agentforce Sales Consultant">
-                        <img src="images/certificates/agentforce-sales-consultant.svg" alt="Certified Agentforce Sales Consultant">
-                    </div>
-                    <div class="cert-item" title="Certified Agentforce Service Consultant">
-                        <img src="images/certificates/agentforce-service-consultant.svg" alt="Certified Agentforce Service Consultant">
+
+                    <!-- Certifications Groups List -->
+                    <div class="certs-groups" id="certs-groups-list">
+                        <!-- Dynamic content will be rendered here via JavaScript -->
                     </div>
                 </div>
             </section>
@@ -1543,7 +2025,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 <h2 class="section-title">TOP CLIENTS</h2>
                 <hr class="section-divider">
                 <div class="clients-slider-container">
-                    <div class="clients-slider-track">
+                    <div class="clients-slider-track" style="animation-duration: 10s;">
                         <div class="clients-slider-list">
                             <div class="client-logo-wrapper">
                                 <img src="images/clients/codingdepartment.svg" alt="Coding Department" class="client-logo">
@@ -1559,6 +2041,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                             </div>
                             <div class="client-logo-wrapper">
                                 <img src="images/clients/aidoc.svg" alt="Aidoc" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/celularity.png" alt="Celularity" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/cropped-chiropractic.png" alt="Chiropractic" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/esg-book.png" alt="ESG Book" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/modifi.png" alt="Modifi" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/muvi.png" alt="Muvi" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper logo-bg-gray">
+                                <img src="images/clients/paro.svg" alt="Paro" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/safecontractor.svg" alt="SafeContractor" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/startek.png" alt="Startek" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper logo-bg-gray">
+                                <img src="images/clients/surveytogo.png" alt="SurveyToGo" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/urbn-dental.png" alt="URBN Dental" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/valley-force.png" alt="Valley Force" class="client-logo">
                             </div>
                         </div>
                         <div class="clients-slider-list">
@@ -1576,6 +2091,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                             </div>
                             <div class="client-logo-wrapper">
                                 <img src="images/clients/aidoc.svg" alt="Aidoc" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/celularity.png" alt="Celularity" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/cropped-chiropractic.png" alt="Chiropractic" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/esg-book.png" alt="ESG Book" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/modifi.png" alt="Modifi" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/muvi.png" alt="Muvi" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper logo-bg-gray">
+                                <img src="images/clients/paro.svg" alt="Paro" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/safecontractor.svg" alt="SafeContractor" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/startek.png" alt="Startek" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper logo-bg-gray">
+                                <img src="images/clients/surveytogo.png" alt="SurveyToGo" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/urbn-dental.png" alt="URBN Dental" class="client-logo">
+                            </div>
+                            <div class="client-logo-wrapper">
+                                <img src="images/clients/valley-force.png" alt="Valley Force" class="client-logo">
                             </div>
                         </div>
                     </div>
@@ -1599,81 +2147,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                             <img src="images/contact/email-icon.svg" alt="Email" class="contact-icon">
                             <span class="contact-card-label">Email</span>
                         </div>
-                        <span class="contact-card-detail">SHUBHAM@CCCINFOTECH.COM</span>
+                        <span class="contact-card-detail">shubham@cccinfotech.COM</span>
                     </a>
                     <div class="contact-card contact-card-full">
                         <div class="contact-card-left">
                             <img src="images/contact/address-icon.svg" alt="Address" class="contact-icon">
-                            <span class="contact-card-label">Address</span>
+                            <span class="contact-card-label">India Office Address</span>
                         </div>
-                        <span class="contact-card-detail">H-146 & 147, H BLOCK, SECTOR 63, NOIDA, UTTAR PRADESH 201309</span>
+                        <span class="contact-card-detail">h-146 & 147, h Block, Sector 63, Noida, Uttar Pradesh 201309</span>
+                    </div>
+                    <div class="contact-card contact-card-full">
+                        <div class="contact-card-left">
+                            <img src="images/contact/address-icon.svg" alt="Address" class="contact-icon">
+                            <span class="contact-card-label">USA Office Address</span>
+                        </div>
+                        <span class="contact-card-detail">8357 Emerald Winds Cir, Boynton Beach, FL 33473 United States</span>
                     </div>
                 </div>
+            </section>
+        </main>
+    </div>
 
-                <!-- Contact Form CTA -->
-                <div class="contact-form-section">
-                    <h3 class="form-title" id="form-section-title">Let's make your project brilliant!</h3>
-                    
-                    <form class="project-contact-form" id="contact-form" action="#" method="POST" novalidate>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <input type="text" id="fullname" name="fullname" placeholder="Full Name" required>
-                                <div class="error-message" id="fullname-error">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                                    </svg>
-                                    <span>Please enter your full name (minimum 2 characters).</span>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <input type="email" id="email" name="email" placeholder="Email Address" required>
-                                <div class="error-message" id="email-error">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                                    </svg>
-                                    <span>Please enter a valid email address.</span>
-                                </div>
-                            </div>
-                        </div>
+    <!-- Contact Form Popup Modal -->
+    <div id="contact-modal" class="modal-overlay">
+        <div class="modal-container">
+            <button class="modal-close-btn" id="modal-close-btn" aria-label="Close modal">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            <div class="contact-form-section" style="margin-top: 0; padding-bottom: 0;">
+                <h3 class="form-title" id="form-section-title">Let's make your project brilliant!</h3>
+
+                <form class="project-contact-form" id="contact-form" action="#" method="POST" novalidate>
+                    <div class="form-row">
                         <div class="form-group">
-                            <textarea id="message" name="message" placeholder="Your Message" required></textarea>
-                            <div class="error-message" id="message-error">
+                            <input type="text" id="fullname" name="fullname" placeholder="Full Name" required>
+                            <div class="error-message" id="fullname-error">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                     <circle cx="12" cy="12" r="10"></circle>
                                     <line x1="12" y1="8" x2="12" y2="12"></line>
                                     <line x1="12" y1="16" x2="12.01" y2="16"></line>
                                 </svg>
-                                <span>Please enter a message (minimum 10 characters).</span>
+                                <span>Please enter your full name (minimum 2 characters).</span>
                             </div>
                         </div>
-                        <button type="submit" class="submit-btn">
-                            <span>SEND MESSAGE</span>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                                <polyline points="12 5 19 12 12 19"></polyline>
-                            </svg>
-                        </button>
-                    </form>
-
-                    <!-- Success Message Block -->
-                    <div class="form-success-container" id="form-success">
-                        <div class="success-icon-wrapper">
-                            <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-                                <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
-                                <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
-                            </svg>
+                        <div class="form-group">
+                            <input type="email" id="email" name="email" placeholder="Email Address" required>
+                            <div class="error-message" id="email-error">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <span>Please enter a valid email address.</span>
+                            </div>
                         </div>
-                        <h4 class="success-title">Message Sent!</h4>
-                        <p class="success-subtitle">Thank you for reaching out. Your message has been sent successfully, and Shubham will get back to you shortly.</p>
-                        <button type="button" class="success-btn" id="success-reset-btn">Send Another Message</button>
                     </div>
+                    <div class="form-group">
+                        <textarea id="message" name="message" placeholder="Your Message" required></textarea>
+                        <div class="error-message" id="message-error">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <span>Please enter a message (minimum 10 characters).</span>
+                        </div>
+                    </div>
+                    <button type="submit" class="submit-btn">
+                        <span>SEND MESSAGE</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                    </button>
+                </form>
+
+                <!-- Success Message Block -->
+                <div class="form-success-container" id="form-success">
+                    <div class="success-icon-wrapper">
+                        <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                            <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none" />
+                            <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
+                        </svg>
+                    </div>
+                    <h4 class="success-title">Message Sent!</h4>
+                    <p class="success-subtitle">Thank you for reaching out. Your message has been sent successfully, and Shubham will get back to you shortly.</p>
+                    <button type="button" class="success-btn" id="success-reset-btn">Send Another Message</button>
                 </div>
-            </section>
-        </main>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1709,6 +2274,304 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 sunIcon.style.display = 'none';
             }
         }
+
+        // Certifications Data & Interactive Logic
+        const certificationsData = [{
+                title: "Salesforce Certified Agentforce Specialist",
+                category: "Agentforce",
+                tag: "Agentforce",
+                image: "images/certificates/agentforce-specialist.svg",
+                description: "Certified Agentforce Specialists are responsible for managing and optimizing Agentforce and have a deep understanding of both Salesforce platform configuration and Agentforce capabilities.",
+                date: "2024-12",
+                issuedText: "Issued Dec 2024"
+            },
+            {
+                title: "Salesforce Certified AI Associate",
+                category: "Agentforce",
+                tag: "Agentforce",
+                image: "images/certificates/ai-associate.svg",
+                description: "Certified AI Associates should be able to provide informed strategies and guide stakeholder decisions based on Salesforce's Trusted AI Principles.",
+                date: "2024-11",
+                issuedText: "Issued Nov 2024"
+            },
+            {
+                title: "Salesforce Certified Agentforce Sales Consultant",
+                category: "Sales",
+                tag: "Sales",
+                image: "images/certificates/agentforce-sales-consultant.svg",
+                description: "Certified Agentforce Sales Consultants are trained to design and implement Agentforce Sales solutions that are sustainable, scalable, and contribute to long-term customer success.",
+                date: "2020-11",
+                issuedText: "Issued Nov 2020"
+            },
+            {
+                title: "Salesforce Certified Agentforce Service Consultant",
+                category: "Service",
+                tag: "Service",
+                image: "images/certificates/agentforce-service-consultant.svg",
+                description: "Certified Agentforce Service Consultants are experts at designing and implementing Agentforce Service solutions that are sustainable and scalable, meet customer business requirements, and contribute to long-term customer success.",
+                date: "2020-08",
+                issuedText: "Issued Aug 2020"
+            },
+            {
+                title: "Salesforce Certified Data 360 Consultant",
+                category: "Data 360",
+                tag: "Data 360",
+                image: "images/certificates/data-360-consultant.svg",
+                description: "Certified Data 360 Consultants have experience implementing and consulting on enterprise data platforms in a customer-facing role.",
+                date: "2025-01",
+                issuedText: "Issued Jan 2025"
+            },
+            {
+                title: "Salesforce Certified Platform Administrator",
+                category: "Platform",
+                tag: "Platform",
+                image: "images/certificates/platform-administrator.svg",
+                description: "Certified Platform Administrators are Salesforce professionals who build and manage trusted solutions on the Salesforce Platform. They administer and secure the lifecycle of users, data, apps and agents to ensure org health and maximize value.",
+                date: "2018-02",
+                issuedText: "Issued Feb 2018"
+            },
+            {
+                title: "Salesforce Certified Platform App Builder",
+                category: "Platform",
+                tag: "Platform",
+                image: "images/certificates/platform-app-builder.svg",
+                description: "Certified Platform App Builders have the skills and knowledge to design, build, and implement custom applications using the declarative customization capabilities of the Salesforce Platform.",
+                date: "2019-07",
+                issuedText: "Issued Jul 2019"
+            },
+            {
+                title: "Salesforce Certified Platform Developer",
+                category: "Platform",
+                tag: "Platform",
+                image: "images/certificates/platform-developer.svg",
+                description: "Certified Platform Developers understand how to develop and deploy custom business logic and custom interfaces using the programmatic capabilities of the Lightning Platform. They can also extend the Lightning Platform using Apex and Visualforce.",
+                date: "2018-10",
+                issuedText: "Issued Oct 2018"
+            },
+            {
+                title: "Salesforce Certified Platform Developer II",
+                category: "Platform",
+                tag: "Platform",
+                image: "images/certificates/platform-developer-2.svg",
+                description: "Certified Platform Developer II (PDII) developers are experts in the advanced programmatic capabilities of the Salesforce Platform, as well as using data modeling to develop complex business logic and interfaces.",
+                date: "2019-04",
+                issuedText: "Issued Apr 2019"
+            },
+            {
+                title: "Salesforce Certified Platform Foundations",
+                category: "Platform",
+                tag: "Platform",
+                image: "images/certificates/platform-foundations.svg",
+                description: "The Salesforce Platform Foundations exam is designed for users with a fundamental awareness of how an integrated CRM platform solves the challenge of connecting departments and customer data, and who have up to 6 months of Salesforce user experience.",
+                date: "2023-05",
+                issuedText: "Issued May 2023"
+            },
+            {
+                title: "Fundamentals I Metadata Pipeline Certification",
+                category: "Copado",
+                tag: "Copado",
+                image: "images/certificates/Copado-Fundamentals-I-Badge.png",
+                description: "Demonstrates fundamental knowledge of Copado's metadata pipeline, deployment processes, version control integration, and environment management within Salesforce DevOps.",
+                date: "2024-06",
+                issuedText: "Issued Jun 2024"
+            },
+            {
+                title: "Fundamentals II Metadata Pipeline Certification",
+                category: "Copado",
+                tag: "Copado",
+                image: "images/certificates/Copado-Fundamentals-2-Badge.png",
+                description: "Validates advanced expertise in configuring, customizing, and troubleshooting Copado's metadata pipeline, including branching strategies, quality gates, and automated testing integrations.",
+                date: "2024-10",
+                issuedText: "Issued Oct 2024"
+            }
+        ];
+
+        // Track collapse state of categories to persist it during search/sort refresh
+        const categoryCollapseStates = {
+            "Agentforce": true, // Collapsed by default
+            "Sales": true, // Collapsed by default
+            "Service": true, // Collapsed by default
+            "Copado": true, // Collapsed by default
+            "Data 360": true, // Collapsed by default
+            "Platform": true // Collapsed by default
+        };
+
+        const certsGroupsContainer = document.getElementById('certs-groups-list');
+        const certsCountEl = document.getElementById('certs-count');
+        const certSearchInput = document.getElementById('cert-search');
+        const certSortSelect = document.getElementById('cert-sort');
+
+        // Reference icons
+        const productIcons = {
+            "Agentforce": `<img src="images/salesforce-icons/agentforce-icon.svg" alt="Agentforce" />`,
+            "Sales": `<img src="images/salesforce-icons/sales-cloud.svg" alt="Sales" />`,
+            "Service": `<img src="images/salesforce-icons/service-cloud.svg" alt="Service" />`,
+            "Copado": `<img src="images/certificates/copado.png" alt="Copado" />`,
+            "Data 360": `<img src="images/salesforce-icons/data-cloud.svg" alt="Data 360" />`,
+            "Platform": `<img src="images/salesforce-icons/salesforce-icon.svg" alt="Platform" />`
+        };
+
+        function renderCertifications() {
+            const searchTerm = certSearchInput.value.toLowerCase().trim();
+            const sortBy = certSortSelect.value;
+
+            // Filter data
+            let filteredCerts = certificationsData.filter(cert => {
+                return cert.title.toLowerCase().includes(searchTerm) ||
+                    cert.description.toLowerCase().includes(searchTerm) ||
+                    cert.category.toLowerCase().includes(searchTerm);
+            });
+
+            // Update total count
+            certsCountEl.textContent = filteredCerts.length;
+
+            if (filteredCerts.length === 0) {
+                certsGroupsContainer.innerHTML = `
+                    <div class="certs-empty">
+                        <svg class="certs-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <div class="certs-empty-title">No Certifications Found</div>
+                        <div class="certs-empty-desc">Try adjusting your keywords to find what you're looking for.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            certsGroupsContainer.innerHTML = '';
+
+            // Check if grouped or flat
+            if (sortBy.startsWith('product-')) {
+                // Group by product category
+                const groups = {};
+                filteredCerts.forEach(cert => {
+                    if (!groups[cert.category]) {
+                        groups[cert.category] = [];
+                    }
+                    groups[cert.category].push(cert);
+                });
+
+                // Sort inside each group by date descending (standard practice)
+                Object.keys(groups).forEach(cat => {
+                    groups[cat].sort((a, b) => b.date.localeCompare(a.date));
+                });
+
+                // Sort categories using custom order (Copado after Service)
+                const categoryOrder = [
+                    "Agentforce",
+                    "Data 360",
+                    "Platform",
+                    "Sales",
+                    "Service",
+                    "Copado"
+                ];
+
+                const categories = Object.keys(groups).sort((a, b) => {
+                    let idxA = categoryOrder.indexOf(a);
+                    let idxB = categoryOrder.indexOf(b);
+                    if (idxA === -1) idxA = 999;
+                    if (idxB === -1) idxB = 999;
+                    if (sortBy === 'product-asc') {
+                        return idxA - idxB;
+                    } else {
+                        return idxB - idxA;
+                    }
+                });
+
+                categories.forEach(cat => {
+                    const certs = groups[cat];
+                    const countText = certs.length === 1 ? '1 Certification' : `${certs.length} Certifications`;
+                    const isCollapsed = categoryCollapseStates[cat] !== false; // default false means expanded
+
+                    const panel = document.createElement('div');
+                    panel.className = `cert-group-panel${isCollapsed ? ' collapsed' : ''}`;
+                    panel.dataset.category = cat;
+
+                    panel.innerHTML = `
+                        <button class="cert-group-header" aria-expanded="${!isCollapsed}">
+                            <svg class="group-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                            <div class="group-icon-wrapper"${cat === 'Copado' ? ' style="color: #00B2A9; background-color: rgba(0, 178, 169, 0.1);"' : ''}>
+                                ${productIcons[cat] || ''}
+                            </div>
+                            <div class="group-info">
+                                <span class="group-title">${cat}</span>
+                                <span class="group-count">${countText}</span>
+                            </div>
+                        </button>
+                        <div class="cert-group-content">
+                            ${certs.map(cert => `
+                                <div class="cert-row">
+                                    <div class="cert-badge-wrapper">
+                                        <img src="${cert.image}" alt="${cert.title}">
+                                    </div>
+                                    <div class="cert-details">
+                                        <span class="cert-product-tag" data-tag="${cert.tag}">${cert.tag}</span>
+                                        <a href="#certifications" class="cert-title-link" data-tag="${cert.tag}">${cert.title}</a>
+                                        <span class="cert-achieved">Achieved by Shubham Das</span>
+                                        <p class="cert-description">${cert.description}</p>
+                                        <span class="cert-date">${cert.issuedText}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+
+                    // Hook up toggle listener
+                    const headerBtn = panel.querySelector('.cert-group-header');
+                    headerBtn.addEventListener('click', () => {
+                        const collapsed = panel.classList.toggle('collapsed');
+                        headerBtn.setAttribute('aria-expanded', !collapsed);
+                        categoryCollapseStates[cat] = collapsed;
+                    });
+
+                    certsGroupsContainer.appendChild(panel);
+                });
+            } else {
+                // Flat layout sorted by Date
+                filteredCerts.sort((a, b) => {
+                    if (sortBy === 'date-desc') {
+                        return b.date.localeCompare(a.date);
+                    } else {
+                        return a.date.localeCompare(b);
+                    }
+                });
+
+                const panel = document.createElement('div');
+                panel.className = 'cert-group-panel';
+                panel.innerHTML = `
+                    <div class="cert-group-content" style="border-top: none;">
+                        ${filteredCerts.map(cert => `
+                            <div class="cert-row">
+                                <div class="cert-badge-wrapper">
+                                    <img src="${cert.image}" alt="${cert.title}">
+                                </div>
+                                <div class="cert-details">
+                                    <span class="cert-product-tag" data-tag="${cert.tag}">${cert.tag}</span>
+                                    <a href="#certifications" class="cert-title-link" data-tag="${cert.tag}">${cert.title}</a>
+                                    <span class="cert-achieved">Achieved by Shubham Das</span>
+                                    <p class="cert-description">${cert.description}</p>
+                                    <span class="cert-date">${cert.issuedText}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                certsGroupsContainer.appendChild(panel);
+            }
+        }
+
+        // Initialize listeners
+        certSearchInput.addEventListener('input', renderCertifications);
+        certSortSelect.addEventListener('change', renderCertifications);
+
+        // Initial render
+        renderCertifications();
+
+        // Copado Certifications Data & Interactive Logic was integrated into Salesforce Certifications
 
         // Services Tab Switcher Script
         const servicesData = {
@@ -1840,7 +2703,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
 
         // Center active link when direct clicked
         navLinks.forEach(link => {
-            link.addEventListener('click', () => {
+            link.addEventListener('click', (e) => {
+                if (link.getAttribute('href') === '#contact') {
+                    e.preventDefault();
+                    openModal();
+                    return;
+                }
                 navLinks.forEach(l => l.classList.remove('active'));
                 link.classList.add('active');
                 centerActiveNavLink();
@@ -1881,7 +2749,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             const field = fields[fieldKey];
             const value = field.input.value;
             const parent = field.input.parentElement;
-            
+
             // Only validate if it's dirty (user has typed or left the input)
             if (!field.dirty) return true;
 
@@ -1931,45 +2799,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 const submitBtn = form.querySelector('.submit-btn');
                 const btnText = submitBtn.querySelector('span');
                 const originalText = btnText.textContent;
-                
+
                 // Show loading state
                 submitBtn.disabled = true;
                 btnText.textContent = 'SENDING...';
-                
+
                 const formData = new FormData(form);
 
                 fetch('index.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    submitBtn.disabled = false;
-                    btnText.textContent = originalText;
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        submitBtn.disabled = false;
+                        btnText.textContent = originalText;
 
-                    if (data.status === 'success') {
-                        // Hide the form and form section title, show success screen
-                        form.style.display = 'none';
-                        formTitle.style.display = 'none';
-                        successBlock.style.display = 'flex';
+                        if (data.status === 'success') {
+                            // Hide the form and form section title, show success screen
+                            form.style.display = 'none';
+                            formTitle.style.display = 'none';
+                            successBlock.style.display = 'flex';
 
-                        // Automatically reset and show the form again after 20 seconds
-                        setTimeout(() => {
-                            if (successBlock.style.display === 'flex') {
-                                resetBtn.click();
-                            }
-                        }, 20000);
-                    } else {
-                        // Display error message nicely
-                        alert(data.message || 'An error occurred. Please try again.');
-                    }
-                })
-                .catch(error => {
-                    submitBtn.disabled = false;
-                    btnText.textContent = originalText;
-                    console.error('Submission error:', error);
-                    alert('Could not submit form. Please verify local database connectivity.');
-                });
+                            // Automatically reset and show the form again after 20 seconds
+                            setTimeout(() => {
+                                if (successBlock.style.display === 'flex') {
+                                    resetBtn.click();
+                                }
+                            }, 20000);
+                        } else {
+                            // Display error message nicely
+                            alert(data.message || 'An error occurred. Please try again.');
+                        }
+                    })
+                    .catch(error => {
+                        submitBtn.disabled = false;
+                        btnText.textContent = originalText;
+                        console.error('Submission error:', error);
+                        alert('Could not submit form. Please verify local database connectivity.');
+                    });
             }
         });
 
@@ -1980,7 +2848,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 const field = fields[key];
                 field.input.value = '';
                 field.dirty = false;
-                
+
                 const parent = field.input.parentElement;
                 parent.classList.remove('has-error');
                 parent.classList.remove('has-success');
@@ -1990,6 +2858,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             successBlock.style.display = 'none';
             form.style.display = 'flex';
             formTitle.style.display = 'block';
+        });
+
+        // Modal open/close logic
+        const contactModal = document.getElementById('contact-modal');
+        const openModalButtons = [
+            document.getElementById('open-consultation-btn'),
+            ...document.querySelectorAll('.open-modal-btn')
+        ];
+        const closeModalBtn = document.getElementById('modal-close-btn');
+
+        function openModal(e) {
+            if (e) e.preventDefault();
+            contactModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            contactModal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        openModalButtons.forEach(btn => {
+            if (btn) {
+                btn.addEventListener('click', openModal);
+            }
+        });
+
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', closeModal);
+        }
+
+        // Close on overlay backdrop click
+        contactModal.addEventListener('click', (e) => {
+            if (e.target === contactModal) {
+                closeModal();
+            }
+        });
+
+        // Close on Escape key press
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && contactModal.classList.contains('active')) {
+                closeModal();
+            }
         });
     </script>
 </body>

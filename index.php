@@ -421,7 +421,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             min-width: 0;
             display: flex;
             flex-direction: column;
-            gap: 60px;
+            gap: 40px;
             max-width: 900px;
         }
 
@@ -1147,6 +1147,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             font-weight: 500;
             color: var(--text-secondary);
             transition: all var(--transition-speed);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .service-tag img {
+            width: 16px;
+            height: 16px;
+            object-fit: contain;
+            flex-shrink: 0;
         }
 
         .service-tag:hover {
@@ -1558,6 +1568,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             transform: translateY(-2px);
         }
 
+        /* CRM CTA Banner Section */
+        .crm-cta-banner {
+            background-color: #0088cc;
+            border-radius: 20px;
+            padding: 56px 32px;
+            text-align: center;
+            color: #ffffff;
+            margin-top: 40px;
+            box-shadow: 0 8px 30px rgba(0, 136, 204, 0.22);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .crm-cta-banner:hover {
+            box-shadow: 0 12px 36px rgba(0, 136, 204, 0.32);
+        }
+
+        .crm-cta-subtitle {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 2.5px;
+            color: rgba(255, 255, 255, 0.9);
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .crm-cta-title {
+            font-size: 38px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 18px;
+            line-height: 1.25;
+            letter-spacing: -0.5px;
+        }
+
+        .crm-cta-desc {
+            font-size: 17px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.92);
+            max-width: 620px;
+            margin: 0 auto 32px auto;
+            line-height: 1.55;
+        }
+
+        .crm-cta-btn {
+            display: inline-block;
+            background-color: #ffffff;
+            color: #0088cc;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 14px 38px;
+            border-radius: 50px;
+            border: 2px solid #ffffff;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            font-family: inherit;
+        }
+
+        .crm-cta-btn:hover {
+            background-color: transparent;
+            color: #ffffff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
         /* Responsive Breakpoints */
         @media (min-width: 993px) and (max-width: 1200px) {
             .app-layout {
@@ -1709,6 +1786,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 grid-template-columns: 1fr;
             }
 
+            .crm-cta-banner {
+                padding: 38px 20px;
+                border-radius: 16px;
+                margin-top: 30px;
+            }
+
+            .crm-cta-title {
+                font-size: 26px;
+            }
+
+            .crm-cta-desc {
+                font-size: 14.5px;
+                margin-bottom: 24px;
+            }
+
+            .crm-cta-btn {
+                padding: 12px 28px;
+                font-size: 15px;
+                width: 100%;
+                max-width: 280px;
+            }
+
             .clients-slider-list {
                 gap: 20px;
                 padding-right: 20px;
@@ -1844,39 +1943,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 <!-- Technology Skill Badges -->
                 <div class="tech-badges">
                     <div class="tech-badge">
-                        <img src="images/salesforce-icons/sales-cloud.svg" alt="Sales Cloud">
+                        <img src="images/salesforce-cloud/sales-cloud.svg" alt="Sales Cloud">
                         <span>Sales Cloud</span>
                     </div>
                     <div class="tech-badge">
-                        <img src="images/salesforce-icons/service-cloud.svg" alt="Service Cloud">
+                        <img src="images/salesforce-cloud/service-cloud.svg" alt="Service Cloud">
                         <span>Service Cloud</span>
                     </div>
                     <div class="tech-badge">
-                        <img src="images/salesforce-icons/marketing-cloud.svg" alt="Marketing Cloud">
+                        <img src="images/salesforce-cloud/marketing-cloud.svg" alt="Marketing Cloud">
                         <span>Marketing Cloud</span>
                     </div>
                     <div class="tech-badge">
-                        <img src="images/salesforce-icons/data-cloud.svg" alt="Data Cloud">
+                        <img src="images/salesforce-cloud/data-cloud.svg" alt="Data Cloud">
                         <span>Data Cloud</span>
                     </div>
                     <div class="tech-badge">
-                        <img src="images/salesforce-icons/experience-cloud.svg" alt="Experience Cloud">
+                        <img src="images/salesforce-cloud/experience-cloud.svg" alt="Experience Cloud">
                         <span>Experience Cloud</span>
                     </div>
                     <div class="tech-badge">
-                        <img src="images/salesforce-icons/agentforce-icon.svg" alt="Agentforce">
+                        <img src="images/salesforce-cloud/agentforce-icon.svg" alt="Agentforce">
                         <span>Agentforce</span>
                     </div>
                     <div class="tech-badge">
-                        <img src="images/salesforce-icons/salesforce-icon.svg" alt="Apex">
+                        <img src="images/salesforce-cloud/salesforce-icon.svg" alt="Apex">
                         <span>Apex</span>
                     </div>
                     <div class="tech-badge">
-                        <img src="images/salesforce-icons/lwc-icon.svg" alt="LWC">
+                        <img src="images/salesforce-cloud/lwc-icon.svg" alt="LWC">
                         <span>LWC</span>
                     </div>
                     <div class="tech-badge">
-                        <img src="images/salesforce-icons/hubspot-icon.svg" alt="HubSpot">
+                        <img src="images/salesforce-cloud/hubspot-icon.svg" alt="HubSpot">
                         <span>HubSpot</span>
                     </div>
                 </div>
@@ -2147,7 +2246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                             <img src="images/contact/email-icon.svg" alt="Email" class="contact-icon">
                             <span class="contact-card-label">Email</span>
                         </div>
-                        <span class="contact-card-detail">shubham@cccinfotech.COM</span>
+                        <span class="contact-card-detail">shubham@cccinfotech.com</span>
                     </a>
                     <div class="contact-card contact-card-full">
                         <div class="contact-card-left">
@@ -2165,6 +2264,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                     </div>
                 </div>
             </section>
+
+            <!-- CRM Problem CTA Section -->
+            <section class="crm-cta-banner">
+                <span class="crm-cta-subtitle">LET'S BUILD ON THE CLOUD</span>
+                <h2 class="crm-cta-title">Have a CRM problem worth solving?</h2>
+                <p class="crm-cta-desc">Whether it's Salesforce, HubSpot, or getting the two to talk to each other — I'd like to hear about it.</p>
+                <button type="button" class="crm-cta-btn open-modal-btn">Start a conversation</button>
+            </section>
         </main>
     </div>
 
@@ -2178,7 +2285,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 </svg>
             </button>
             <div class="contact-form-section" style="margin-top: 0; padding-bottom: 0;">
-                <h3 class="form-title" id="form-section-title">Let's make your project brilliant!</h3>
+                <h3 class="form-title" id="form-section-title">Let's build on the cloud!</h3>
 
                 <form class="project-contact-form" id="contact-form" action="#" method="POST" novalidate>
                     <div class="form-row">
@@ -2403,12 +2510,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
 
         // Reference icons
         const productIcons = {
-            "Agentforce": `<img src="images/salesforce-icons/agentforce-icon.svg" alt="Agentforce" />`,
-            "Sales": `<img src="images/salesforce-icons/sales-cloud.svg" alt="Sales" />`,
-            "Service": `<img src="images/salesforce-icons/service-cloud.svg" alt="Service" />`,
+            "Agentforce": `<img src="images/salesforce-cloud/agentforce-icon.svg" alt="Agentforce" />`,
+            "Sales": `<img src="images/salesforce-cloud/sales-cloud.svg" alt="Sales" />`,
+            "Service": `<img src="images/salesforce-cloud/service-cloud.svg" alt="Service" />`,
             "Copado": `<img src="images/certificates/copado.png" alt="Copado" />`,
-            "Data 360": `<img src="images/salesforce-icons/data-cloud.svg" alt="Data 360" />`,
-            "Platform": `<img src="images/salesforce-icons/salesforce-icon.svg" alt="Platform" />`
+            "Data 360": `<img src="images/salesforce-cloud/data-cloud.svg" alt="Data 360" />`,
+            "Platform": `<img src="images/salesforce-cloud/salesforce-icon.svg" alt="Platform" />`
         };
 
         function renderCertifications() {
@@ -2588,28 +2695,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 'Salesforce Mobile SDK Development',
                 'Salesforce Support'
             ],
-            'salesforce-clouds': [
-                'Sales Cloud',
-                'Service Cloud',
-                'Marketing Cloud',
-                'Commerce Cloud',
-                'Experience Cloud',
-                'Data Cloud',
-                'Financial Services Cloud',
-                'Health Cloud',
-                'Education Cloud',
-                'Non-Profit Cloud'
+            'salesforce-clouds': [{
+                    name: 'Sales Cloud',
+                    icon: 'images/salesforce-cloud/sales-cloud.svg'
+                },
+                {
+                    name: 'Service Cloud',
+                    icon: 'images/salesforce-cloud/service-cloud.svg'
+                },
+                {
+                    name: 'Marketing Cloud',
+                    icon: 'images/salesforce-cloud/marketing-cloud.svg'
+                },
+                {
+                    name: 'Commerce Cloud',
+                    icon: 'images/salesforce-cloud/commerce-cloud.svg'
+                },
+                {
+                    name: 'Experience Cloud',
+                    icon: 'images/salesforce-cloud/experience-cloud.svg'
+                },
+                {
+                    name: 'Data Cloud',
+                    icon: 'images/salesforce-cloud/data-cloud.svg'
+                },
+                {
+                    name: 'Financial Services Cloud',
+                    icon: 'images/salesforce-cloud/financial-cloud.svg'
+                },
+                {
+                    name: 'Health Cloud',
+                    icon: 'images/salesforce-cloud/health-cloud.svg'
+                },
+                {
+                    name: 'Education Cloud',
+                    icon: 'images/salesforce-cloud/education-cloud.svg'
+                },
+                {
+                    name: 'Non-Profit Cloud',
+                    icon: 'images/salesforce-cloud/nonprofit-cloud.svg'
+                }
             ],
-            'salesforce-products': [
-                'Agentforce',
-                'MuleSoft',
-                'Tableau',
-                'Slack',
-                'CPQ & Billing',
-                'Field Service Lightning',
-                'Einstein AI & Analytics',
-                'HubSpot Integration',
-                'Salesforce Shield'
+            'salesforce-products': [{
+                    name: 'Agentforce',
+                    icon: 'images/salesforce-product/agentforce.svg'
+                },
+                {
+                    name: 'MuleSoft',
+                    icon: 'images/salesforce-product/mulesoft.svg'
+                },
+                {
+                    name: 'Tableau',
+                    icon: 'images/salesforce-product/tableau.svg'
+                },
+                {
+                    name: 'Slack',
+                    icon: 'images/salesforce-product/slack.svg'
+                },
+                {
+                    name: 'CPQ & Billing',
+                    icon: 'images/salesforce-product/lightning-platform.svg'
+                },
+                {
+                    name: 'Field Service Lightning',
+                    icon: 'images/salesforce-product/field-service-lightning.svg'
+                },
+                {
+                    name: 'Einstein AI & Analytics',
+                    icon: 'images/salesforce-product/einstein-ai.svg'
+                },
+                {
+                    name: 'HubSpot Integration',
+                    icon: 'images/salesforce-cloud/hubspot-icon.svg'
+                },
+                {
+                    name: 'Salesforce Shield',
+                    icon: 'images/salesforce-cloud/salesforce-icon.svg'
+                }
             ]
         };
 
@@ -2636,10 +2798,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             tagsList.className = 'services-tags-list';
 
             const tags = servicesData[tabName] || [];
-            tags.forEach(tag => {
+            tags.forEach(item => {
                 const span = document.createElement('span');
                 span.className = 'service-tag';
-                span.textContent = tag;
+
+                const tagName = typeof item === 'object' ? item.name : item;
+                const tagIcon = typeof item === 'object' ? item.icon : null;
+
+                if (tagIcon) {
+                    const img = document.createElement('img');
+                    img.src = tagIcon;
+                    img.alt = tagName;
+                    span.appendChild(img);
+                }
+
+                const textSpan = document.createElement('span');
+                textSpan.textContent = tagName;
+                span.appendChild(textSpan);
+
                 tagsList.appendChild(span);
             });
             tagsContainer.appendChild(tagsList);

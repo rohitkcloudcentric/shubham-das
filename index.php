@@ -1996,7 +1996,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                         <img src="images/social-media/web.svg" alt="Website">
                     </a>
                 </div>
-                <a href="#" class="consultation-btn" id="open-consultation-btn">Get Free Consultation</a>
+                <a href="#" class="consultation-btn" id="open-consultation-btn">Start a conversation</a>
             </div>
 
 

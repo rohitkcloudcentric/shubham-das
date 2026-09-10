@@ -240,10 +240,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($createTableSQL);
 
-        // Ensure columns exist for upgraded schemas
-        $wpdb->query("ALTER TABLE `$table_name` ADD COLUMN IF NOT EXISTS `phone` VARCHAR(50) DEFAULT ''");
-        $wpdb->query("ALTER TABLE `$table_name` ADD COLUMN IF NOT EXISTS `page_name` VARCHAR(255) DEFAULT ''");
-        $wpdb->query("ALTER TABLE `$table_name` ADD COLUMN IF NOT EXISTS `user_ip` VARCHAR(100) DEFAULT ''");
+        // Ensure columns exist for upgraded schemas without syntax compatibility issues across MySQL/MariaDB versions
+        $existing_columns = $wpdb->get_col("SHOW COLUMNS FROM `$table_name`");
+        if (!empty($existing_columns) && is_array($existing_columns)) {
+            if (!in_array('phone', $existing_columns)) {
+                $wpdb->query("ALTER TABLE `$table_name` ADD COLUMN `phone` VARCHAR(50) DEFAULT '' AFTER `email`");
+            }
+            if (!in_array('page_name', $existing_columns)) {
+                $wpdb->query("ALTER TABLE `$table_name` ADD COLUMN `page_name` VARCHAR(255) DEFAULT ''");
+            }
+            if (!in_array('user_ip', $existing_columns)) {
+                $wpdb->query("ALTER TABLE `$table_name` ADD COLUMN `user_ip` VARCHAR(100) DEFAULT ''");
+            }
+        }
 
         $inserted = $wpdb->insert(
             $table_name,

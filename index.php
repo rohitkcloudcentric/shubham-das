@@ -1,16 +1,214 @@
 <?php
-// Handle AJAX form submission to database
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset($_POST['email']) && isset($_POST['message'])) {
+// Function to retrieve client IP address
+function getUserIP()
+{
+    $ip = '';
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        $ip = $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        $ip = trim($ips[0]);
+    } elseif (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+        $ip = $_SERVER['HTTP_X_REAL_IP'];
+    } elseif (!empty($_SERVER['REMOTE_ADDR'])) {
+        $ip = $_SERVER['REMOTE_ADDR'];
+    }
+
+    // If local loopback (127.0.0.1 or ::1), fallback to actual detected public IP
+    if (empty($ip) || $ip === '127.0.0.1' || $ip === '::1') {
+        $ip = '122.176.158.93';
+    }
+    return $ip;
+}
+
+// Function to validate lead data and prevent junk / spam submissions to Salesforce
+function validateLeadData($fullname, $email, $phone, $message, $user_ip, $page_name, $recaptcha_response = '')
+{
+    $errors = [];
+
+    // 0. reCAPTCHA Validation
+    if (empty($recaptcha_response)) {
+        $errors[] = 'Please check the reCAPTCHA box to verify you are human.';
+    }
+
+    // 1. Full Name Validation
+    if (empty($fullname)) {
+        $errors[] = 'Full name is required.';
+    } elseif (strlen($fullname) < 2 || strlen($fullname) > 80) {
+        $errors[] = 'Full name must be between 2 and 80 characters.';
+    } elseif (!preg_match("/^[a-zA-Z\s\-'\.]+$/u", $fullname)) {
+        $errors[] = 'Full name can only contain letters, spaces, hyphens, and dots.';
+    } elseif (preg_match('/(.)\1{4,}/i', $fullname)) {
+        $errors[] = 'Full name contains repetitive invalid characters.';
+    } elseif (preg_match('/^(asdf|qwerty|test|admin|user|aaa|bbb|xxx|1234)/i', trim($fullname))) {
+        $errors[] = 'Please enter a genuine full name.';
+    }
+
+    // 2. Email Validation & Disposable Domain Check
+    if (empty($email)) {
+        $errors[] = 'Email address is required.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = 'Please enter a valid email address.';
+    } else {
+        $emailParts = explode('@', strtolower($email));
+        $domain = end($emailParts);
+        $disposableDomains = [
+            'test.com',
+            'example.com',
+            'domain.com',
+            'tempmail.com',
+            'mailinator.com',
+            '10minutemail.com',
+            'guerrillamail.com',
+            'yopmail.com',
+            'trashmail.com',
+            'dispostable.com',
+            'fakeinbox.com',
+            'sharklasers.com',
+            'getnada.com',
+            'byom.de',
+            'temp-mail.org',
+            'invalid.com',
+            'fake.com',
+            'test.net'
+        ];
+        if (in_array($domain, $disposableDomains)) {
+            $errors[] = 'Please use a valid, non-disposable email domain.';
+        } elseif ($emailParts[0] === 'test' || $emailParts[0] === 'admin' || $emailParts[0] === 'asdf') {
+            $errors[] = 'Please enter a genuine personal or work email address.';
+        }
+    }
+
+    // 3. Mobile Number Validation
+    if (empty($phone)) {
+        $errors[] = 'Mobile number is required.';
+    } else {
+        $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+        if (strlen($cleanPhone) < 7 || strlen($cleanPhone) > 15) {
+            $errors[] = 'Mobile number must contain between 7 and 15 digits.';
+        } elseif (!preg_match('/^[0-9\+\-\s\(\)]+$/', $phone)) {
+            $errors[] = 'Mobile number contains invalid characters.';
+        } elseif (preg_match('/(.)\1{6,}/', $cleanPhone) || preg_match('/^(1234567|0123456)/', $cleanPhone)) {
+            $errors[] = 'Please enter a genuine mobile number.';
+        }
+    }
+
+    // 4. Message / Comments Validation
+    if (empty($message)) {
+        $errors[] = 'Message is required.';
+    } elseif (strlen($message) < 10) {
+        $errors[] = 'Message must be at least 10 characters long.';
+    } elseif (strlen($message) > 5000) {
+        $errors[] = 'Message cannot exceed 5000 characters.';
+    } elseif (preg_match('/(.)\1{6,}/i', $message)) {
+        $errors[] = 'Message contains excessive repeated characters.';
+    } else {
+        // Count URLs in message to block spam link bots
+        $urlCount = preg_match_all('/https?:\/\/[^\s]+/i', $message);
+        if ($urlCount > 2) {
+            $errors[] = 'Message contains too many links and was flagged as spam.';
+        }
+    }
+
+    // 5. IP Address Validation
+    if (empty($user_ip)) {
+        $errors[] = 'User IP Address could not be detected. Form submission blocked.';
+    } elseif (!filter_var($user_ip, FILTER_VALIDATE_IP)) {
+        $errors[] = 'Invalid User IP Address detected.';
+    }
+
+    // 6. Page Name Validation
+    if (empty($page_name)) {
+        $errors[] = 'Page Name is required.';
+    }
+
+    return $errors;
+}
+
+// Function to forward lead data to Salesforce Pardot via cURL
+function forwardToPardot($fullname, $email, $phone, $message, $page_name, $user_ip)
+{
+    $pardot_url = 'https://sales.cccinfotech.com/l/978703/2026-09-10/65qlm';
+    $post_fields = [
+        // Pardot ID Keys
+        '978703_94794pi_978703_94794' => $fullname,
+        '978703_94797pi_978703_94797' => $email,
+        '978703_94809pi_978703_94809' => $phone,
+        '978703_94800pi_978703_94800' => $message,
+        '978703_94803pi_978703_94803' => $page_name,
+        '978703_94806pi_978703_94806' => $user_ip,
+        // Standard Pardot Field Names Fallback
+        'last_name'                  => $fullname,
+        'email'                      => $email,
+        'phone'                      => $phone,
+        'comments'                   => $message,
+        'Web_Page_Name'              => $page_name,
+        'Batch_Name'                 => $user_ip,
+        'pi_extra_field'             => '',
+        '_utf8'                      => '☃',
+        'hiddenDependentFields'      => ''
+    ];
+
+    if (function_exists('curl_init')) {
+        $user_agent = !empty($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $pardot_url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_fields));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'X-Forwarded-For: ' . $user_ip,
+            'Client-IP: ' . $user_ip
+        ]);
+        $result = curl_exec($ch);
+        curl_close($ch);
+        return $result;
+    }
+    return false;
+}
+
+// Handle AJAX form submission to database and Salesforce Pardot
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
 
-    // Check if we are inside the WordPress environment on the live server
-    // Path on live server: /var/www/html/new.cccinfotech.com/profile/shubham-das/index.php
-    // WordPress wp-load.php is at: /var/www/html/new.cccinfotech.com/wp-load.php (3 levels up)
-    $wp_load_path = dirname(dirname(dirname(__FILE__))) . '/wp-load.php';
+    // Anti-spam honeypot check
+    if (!empty($_POST['pi_extra_field'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Spam submission detected.']);
+        exit;
+    }
 
-    $fullname = isset($_POST['fullname']) ? trim($_POST['fullname']) : '';
-    $email = isset($_POST['email']) ? trim($_POST['email']) : '';
-    $message = isset($_POST['message']) ? trim($_POST['message']) : '';
+    // Extract parameters from Pardot field names or standard field names
+    $fullname  = isset($_POST['978703_94794pi_978703_94794']) ? trim($_POST['978703_94794pi_978703_94794']) : (isset($_POST['fullname']) ? trim($_POST['fullname']) : '');
+    $email     = isset($_POST['978703_94797pi_978703_94797']) ? trim($_POST['978703_94797pi_978703_94797']) : (isset($_POST['email']) ? trim($_POST['email']) : '');
+    $phone     = isset($_POST['978703_94809pi_978703_94809']) ? trim($_POST['978703_94809pi_978703_94809']) : (isset($_POST['phone']) ? trim($_POST['phone']) : '');
+    $message   = isset($_POST['978703_94800pi_978703_94800']) ? trim($_POST['978703_94800pi_978703_94800']) : (isset($_POST['message']) ? trim($_POST['message']) : '');
+    $page_name = isset($_POST['978703_94803pi_978703_94803']) ? trim($_POST['978703_94803pi_978703_94803']) : (isset($_POST['page_name']) ? trim($_POST['page_name']) : 'Shubham Das - Salesforce Consultant & Project Lead');
+    $user_ip   = isset($_POST['978703_94806pi_978703_94806']) ? trim($_POST['978703_94806pi_978703_94806']) : (isset($_POST['user_ip']) ? trim($_POST['user_ip']) : '');
+
+    if (empty($user_ip)) {
+        $user_ip = getUserIP();
+    }
+
+    $recaptcha_response = isset($_POST['g-recaptcha-response']) ? trim($_POST['g-recaptcha-response']) : '';
+
+    // Perform comprehensive anti-junk & anti-spam validation
+    $errors = validateLeadData($fullname, $email, $phone, $message, $user_ip, $page_name, $recaptcha_response);
+
+    if (!empty($errors)) {
+        echo json_encode(['status' => 'error', 'message' => implode(' ', $errors)]);
+        exit;
+    }
+
+    // Forward submission to Pardot
+    forwardToPardot($fullname, $email, $phone, $message, $page_name, $user_ip);
+
+    // Save lead to database
+    $wp_load_path = dirname(dirname(dirname(__FILE__))) . '/wp-load.php';
 
     if (file_exists($wp_load_path)) {
         // --- 1. WORDPRESS LIVE ENVIRONMENT ---
@@ -18,57 +216,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
         require_once($wp_load_path);
         global $wpdb;
 
-        // Sanitize using WordPress core functions
-        $fullname = sanitize_text_field($fullname);
-        $email = sanitize_email($email);
-        $message = sanitize_textarea_field($message);
+        $fullname  = sanitize_text_field($fullname);
+        $email     = sanitize_email($email);
+        $phone     = sanitize_text_field($phone);
+        $message   = sanitize_textarea_field($message);
+        $page_name = sanitize_text_field($page_name);
+        $user_ip   = sanitize_text_field($user_ip);
 
-        // Validation constraints
-        $errors = [];
-        if (empty($fullname) || strlen($fullname) < 2) {
-            $errors[] = 'Full name must be at least 2 characters.';
-        }
-        if (empty($email) || !is_email($email)) {
-            $errors[] = 'Please provide a valid email address.';
-        }
-        if (empty($message) || strlen($message) < 10) {
-            $errors[] = 'Message must be at least 10 characters.';
-        }
-
-        if (!empty($errors)) {
-            echo json_encode(['status' => 'error', 'message' => implode(' ', $errors)]);
-            exit;
-        }
-
-        // Target database table name
         $table_name = 'shubham_das_lead';
         $charset_collate = $wpdb->get_charset_collate();
 
-        // Create table in the WordPress database if it doesn't exist
         $createTableSQL = "CREATE TABLE IF NOT EXISTS `$table_name` (
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `fullname` VARCHAR(255) NOT NULL,
             `email` VARCHAR(255) NOT NULL,
+            `phone` VARCHAR(50) DEFAULT '',
             `message` TEXT NOT NULL,
+            `page_name` VARCHAR(255) DEFAULT '',
+            `user_ip` VARCHAR(100) DEFAULT '',
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) $charset_collate;";
 
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($createTableSQL);
 
-        // Insert lead entry via WordPress DB abstraction
+        // Ensure columns exist for upgraded schemas
+        $wpdb->query("ALTER TABLE `$table_name` ADD COLUMN IF NOT EXISTS `phone` VARCHAR(50) DEFAULT ''");
+        $wpdb->query("ALTER TABLE `$table_name` ADD COLUMN IF NOT EXISTS `page_name` VARCHAR(255) DEFAULT ''");
+        $wpdb->query("ALTER TABLE `$table_name` ADD COLUMN IF NOT EXISTS `user_ip` VARCHAR(100) DEFAULT ''");
+
         $inserted = $wpdb->insert(
             $table_name,
             [
-                'fullname' => $fullname,
-                'email'    => $email,
-                'message'  => $message
+                'fullname'  => $fullname,
+                'email'     => $email,
+                'phone'     => $phone,
+                'message'   => $message,
+                'page_name' => $page_name,
+                'user_ip'   => $user_ip
             ],
-            ['%s', '%s', '%s']
+            ['%s', '%s', '%s', '%s', '%s', '%s']
         );
 
         if ($inserted !== false) {
-            echo json_encode(['status' => 'success', 'message' => 'Your message has been stored in database successfully!']);
+            echo json_encode(['status' => 'success', 'message' => 'Your message has been submitted and stored successfully!']);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Failed to save lead: ' . $wpdb->last_error]);
         }
@@ -78,7 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
         $host = 'localhost';
         $db = 'local_cccinfotech';
         $user = 'root';
-        $pass = ''; // Default XAMPP MySQL password is empty
+        $pass = '';
         $charset = 'utf8mb4';
 
         $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
@@ -89,64 +280,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
         ];
 
         try {
-            // Check and create local database
             $pdo = new PDO("mysql:host=$host;charset=$charset", $user, $pass, $options);
             $pdo->exec("CREATE DATABASE IF NOT EXISTS `$db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
-            // Connect to local database
             $pdo = new PDO($dsn, $user, $pass, $options);
 
-            // Create local table if it doesn't exist
             $createTableSQL = "CREATE TABLE IF NOT EXISTS `shubham_das_lead` (
                 `id` INT AUTO_INCREMENT PRIMARY KEY,
                 `fullname` VARCHAR(255) NOT NULL,
                 `email` VARCHAR(255) NOT NULL,
+                `phone` VARCHAR(50) DEFAULT '',
                 `message` TEXT NOT NULL,
+                `page_name` VARCHAR(255) DEFAULT '',
+                `user_ip` VARCHAR(100) DEFAULT '',
                 `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
             $pdo->exec($createTableSQL);
 
-            // Strip HTML tags for clean database storage to prevent XSS
-            $fullname = strip_tags($fullname);
-            $email = strip_tags($email);
-            $message = strip_tags($message);
-
-            // Validation checks
-            $errors = [];
-            if (empty($fullname)) {
-                $errors[] = 'Full name is required.';
-            } elseif (strlen($fullname) < 2 || strlen($fullname) > 100) {
-                $errors[] = 'Full name must be between 2 and 100 characters.';
-            } elseif (!preg_match("/^[a-zA-Z\s\-']+$/", $fullname)) {
-                $errors[] = 'Full name must contain only letters, spaces, hyphens, or apostrophes.';
+            try {
+                $pdo->exec("ALTER TABLE `shubham_das_lead` ADD COLUMN `phone` VARCHAR(50) DEFAULT ''");
+            } catch (PDOException $e) {
+            }
+            try {
+                $pdo->exec("ALTER TABLE `shubham_das_lead` ADD COLUMN `page_name` VARCHAR(255) DEFAULT ''");
+            } catch (PDOException $e) {
+            }
+            try {
+                $pdo->exec("ALTER TABLE `shubham_das_lead` ADD COLUMN `user_ip` VARCHAR(100) DEFAULT ''");
+            } catch (PDOException $e) {
             }
 
-            if (empty($email)) {
-                $errors[] = 'Email address is required.';
-            } elseif (strlen($email) > 255) {
-                $errors[] = 'Email address must not exceed 255 characters.';
-            } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $errors[] = 'Please provide a valid email address.';
-            }
+            $fullname  = strip_tags($fullname);
+            $email     = strip_tags($email);
+            $phone     = strip_tags($phone);
+            $message   = strip_tags($message);
+            $page_name = strip_tags($page_name);
+            $user_ip   = strip_tags($user_ip);
 
-            if (empty($message)) {
-                $errors[] = 'Message is required.';
-            } elseif (strlen($message) < 10) {
-                $errors[] = 'Message must be at least 10 characters.';
-            } elseif (strlen($message) > 5000) {
-                $errors[] = 'Message must not exceed 5000 characters.';
-            }
+            $stmt = $pdo->prepare("INSERT INTO `shubham_das_lead` (`fullname`, `email`, `phone`, `message`, `page_name`, `user_ip`) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$fullname, $email, $phone, $message, $page_name, $user_ip]);
 
-            if (!empty($errors)) {
-                echo json_encode(['status' => 'error', 'message' => implode(' ', $errors)]);
-                exit;
-            }
-
-            // Insert lead record
-            $stmt = $pdo->prepare("INSERT INTO `shubham_das_lead` (`fullname`, `email`, `message`) VALUES (?, ?, ?)");
-            $stmt->execute([$fullname, $email, $message]);
-
-            echo json_encode(['status' => 'success', 'message' => 'Your message has been stored in local database successfully!']);
+            echo json_encode(['status' => 'success', 'message' => 'Your message has been submitted and stored in local database successfully!']);
             exit;
         } catch (\PDOException $e) {
             echo json_encode(['status' => 'error', 'message' => 'Database connection failed: ' . $e->getMessage()]);
@@ -166,6 +340,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Google reCAPTCHA v2 Script -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <style>
         :root {
             --bg-primary: #F3F4F4;
@@ -2287,21 +2463,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             <div class="contact-form-section" style="margin-top: 0; padding-bottom: 0;">
                 <h3 class="form-title" id="form-section-title">Let's build on the cloud!</h3>
 
-                <form class="project-contact-form" id="contact-form" action="#" method="POST" novalidate>
+                <form accept-charset="UTF-8" action="https://sales.cccinfotech.com/l/978703/2026-09-10/65qlm" class="project-contact-form form" id="contact-form" method="POST" novalidate>
+                    <div class="form-group">
+                        <input type="text" id="fullname" name="978703_94794pi_978703_94794" placeholder="Full Name" required>
+                        <div class="error-message" id="fullname-error">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <span>Please enter your full name (minimum 2 characters).</span>
+                        </div>
+                    </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <input type="text" id="fullname" name="fullname" placeholder="Full Name" required>
-                            <div class="error-message" id="fullname-error">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                                </svg>
-                                <span>Please enter your full name (minimum 2 characters).</span>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <input type="email" id="email" name="email" placeholder="Email Address" required>
+                            <input type="email" id="email" name="978703_94797pi_978703_94797" placeholder="Email Address" required>
                             <div class="error-message" id="email-error">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                     <circle cx="12" cy="12" r="10"></circle>
@@ -2311,9 +2487,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                                 <span>Please enter a valid email address.</span>
                             </div>
                         </div>
+                        <div class="form-group">
+                            <input type="tel" id="phone" name="978703_94809pi_978703_94809" placeholder="Mobile Number" maxlength="40" required>
+                            <div class="error-message" id="phone-error">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <span>Please enter a valid mobile number (min 7 digits).</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <textarea id="message" name="message" placeholder="Your Message" required></textarea>
+                        <textarea id="message" name="978703_94800pi_978703_94800" placeholder="Your Message" required></textarea>
                         <div class="error-message" id="message-error">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                 <circle cx="12" cy="12" r="10"></circle>
@@ -2323,6 +2510,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                             <span>Please enter a message (minimum 10 characters).</span>
                         </div>
                     </div>
+
+                    <!-- Google reCAPTCHA v2 Field -->
+                    <div class="form-group" id="recaptcha-form-group">
+                        <div class="g-recaptcha" data-sitekey="6LfVnCYTAAAAAB4x9xlkeTsV8CO6np5UMhNjRNNZ" data-callback="onRecaptchaSuccess" data-expired-callback="onRecaptchaExpired"></div>
+                        <div class="error-message" id="recaptcha-error">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <span>Please check the reCAPTCHA box to verify you are human.</span>
+                        </div>
+                    </div>
+
+                    <!-- Page Name & User IP Address (Pardot Mapped Fields) -->
+                    <input type="hidden" id="page_name" name="978703_94803pi_978703_94803" value="Shubham Das - Salesforce Consultant & Project Lead">
+                    <input type="hidden" id="user_ip" name="978703_94806pi_978703_94806" value="<?php echo htmlspecialchars(getUserIP()); ?>">
+
+                    <!-- Pardot Required Hidden & Honeypot Fields -->
+                    <input type="hidden" name="_utf8" value="☃">
+                    <input type="hidden" name="hiddenDependentFields" id="hiddenDependentFields" value="">
+                    <p style="position:absolute; width:190px; left:-9999px; top:-9999px; visibility:hidden;">
+                        <label for="pi_extra_field">Comments</label>
+                        <input type="text" name="pi_extra_field" id="pi_extra_field">
+                    </p>
+
                     <button type="submit" class="submit-btn">
                         <span>SEND MESSAGE</span>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -2342,7 +2555,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                     </div>
                     <h4 class="success-title">Message Sent!</h4>
                     <p class="success-subtitle">Thank you for reaching out. Your message has been sent successfully, and Shubham will get back to you shortly.</p>
-                    <button type="button" class="success-btn" id="success-reset-btn">Send Another Message</button>
                 </div>
             </div>
         </div>
@@ -2898,44 +3110,99 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
         const form = document.getElementById('contact-form');
         const successBlock = document.getElementById('form-success');
         const formTitle = document.getElementById('form-section-title');
-        const resetBtn = document.getElementById('success-reset-btn');
+
+        // Ensure IP Address field is populated if empty
+        const userIpElem = document.getElementById('user_ip');
+        if (userIpElem && (!userIpElem.value || userIpElem.value === '127.0.0.1')) {
+            fetch('https://api.ipify.org?format=json')
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.ip) userIpElem.value = data.ip;
+                })
+                .catch(() => {});
+        }
 
         const fields = {
             fullname: {
                 input: document.getElementById('fullname'),
-                validate: (val) => val.trim().length >= 2,
+                validate: (val) => {
+                    const clean = val.trim();
+                    if (clean.length < 2 || clean.length > 80) return false;
+                    if (!/^[a-zA-Z\s\-'\.]+$/.test(clean)) return false;
+                    if (/(.)\1{4,}/i.test(clean)) return false;
+                    if (/^(asdf|qwerty|test|admin|user|aaa|bbb|xxx|1234)/i.test(clean)) return false;
+                    return true;
+                },
                 dirty: false
             },
             email: {
                 input: document.getElementById('email'),
                 validate: (val) => {
                     const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-                    return re.test(val.trim());
+                    const clean = val.trim().toLowerCase();
+                    if (!re.test(clean)) return false;
+                    const disposable = ['test.com', 'example.com', 'domain.com', 'tempmail.com', 'mailinator.com', '10minutemail.com', 'guerrillamail.com', 'yopmail.com', 'trashmail.com', 'dispostable.com', 'fakeinbox.com', 'sharklasers.com', 'getnada.com', 'temp-mail.org'];
+                    const domain = clean.split('@')[1];
+                    if (disposable.includes(domain)) return false;
+                    return true;
+                },
+                dirty: false
+            },
+            phone: {
+                input: document.getElementById('phone'),
+                validate: (val) => {
+                    const clean = val.trim();
+                    const digits = clean.replace(/[^0-9]/g, '');
+                    if (digits.length < 7 || digits.length > 15) return false;
+                    if (!/^[0-9\+\-\s\(\)]+$/.test(clean)) return false;
+                    if (/(.)\1{6,}/.test(digits)) return false;
+                    if (/^(1234567|0123456)/.test(digits)) return false;
+                    return true;
                 },
                 dirty: false
             },
             message: {
                 input: document.getElementById('message'),
-                validate: (val) => val.trim().length >= 10,
+                validate: (val) => {
+                    const clean = val.trim();
+                    if (clean.length < 10 || clean.length > 5000) return false;
+                    if (/(.)\1{6,}/i.test(clean)) return false;
+                    const urls = (clean.match(/https?:\/\/[^\s]+/gi) || []).length;
+                    if (urls > 2) return false;
+                    return true;
+                },
+                dirty: false
+            },
+            user_ip: {
+                input: document.getElementById('user_ip'),
+                validate: (val) => val && val.trim().length > 0,
+                dirty: false
+            },
+            page_name: {
+                input: document.getElementById('page_name'),
+                validate: (val) => val && val.trim().length > 0,
                 dirty: false
             }
         };
 
         function validateField(fieldKey) {
             const field = fields[fieldKey];
-            const value = field.input.value;
+            if (!field || !field.input) return true;
+            const value = field.input.value || '';
             const parent = field.input.parentElement;
 
             // Only validate if it's dirty (user has typed or left the input)
             if (!field.dirty) return true;
 
             const isValid = field.validate(value);
-            if (isValid) {
-                parent.classList.remove('has-error');
-                parent.classList.add('has-success');
-            } else {
-                parent.classList.remove('has-success');
-                parent.classList.add('has-error');
+            if (parent && parent.classList.contains('form-group')) {
+                if (isValid) {
+                    parent.classList.remove('has-error');
+                    parent.classList.add('has-success');
+                } else {
+                    parent.classList.remove('has-success');
+                    parent.classList.add('has-error');
+                }
             }
             return isValid;
         }
@@ -2957,6 +3224,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
             });
         });
 
+        // Global callbacks for reCAPTCHA v2 state updates
+        window.onRecaptchaSuccess = function() {
+            const group = document.getElementById('recaptcha-form-group');
+            if (group) {
+                group.classList.remove('has-error');
+                group.classList.add('has-success');
+            }
+        };
+
+        window.onRecaptchaExpired = function() {
+            const group = document.getElementById('recaptcha-form-group');
+            if (group) {
+                group.classList.remove('has-success');
+                group.classList.add('has-error');
+            }
+        };
+
         // Submit listener
         form.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -2971,6 +3255,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 }
             });
 
+            // Validate reCAPTCHA v2 response
+            let recaptchaResponse = '';
+            if (typeof grecaptcha !== 'undefined') {
+                recaptchaResponse = grecaptcha.getResponse();
+            }
+            const recaptchaGroup = document.getElementById('recaptcha-form-group');
+            if (!recaptchaResponse || recaptchaResponse.trim().length === 0) {
+                isFormValid = false;
+                if (recaptchaGroup) {
+                    recaptchaGroup.classList.remove('has-success');
+                    recaptchaGroup.classList.add('has-error');
+                }
+            } else {
+                if (recaptchaGroup) {
+                    recaptchaGroup.classList.remove('has-error');
+                    recaptchaGroup.classList.add('has-success');
+                }
+            }
+
             if (isFormValid) {
                 const submitBtn = form.querySelector('.submit-btn');
                 const btnText = submitBtn.querySelector('span');
@@ -2980,11 +3283,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                 submitBtn.disabled = true;
                 btnText.textContent = 'SENDING...';
 
-                const formData = new FormData(form);
+                // 1. Direct Browser POST to Pardot Form Handler via hidden iframe
+                try {
+                    let iframe = document.getElementById('pardot_hidden_iframe');
+                    if (!iframe) {
+                        iframe = document.createElement('iframe');
+                        iframe.id = 'pardot_hidden_iframe';
+                        iframe.name = 'pardot_hidden_iframe';
+                        iframe.style.display = 'none';
+                        document.body.appendChild(iframe);
+                    }
 
+                    const tempForm = document.createElement('form');
+                    tempForm.method = 'POST';
+                    tempForm.action = 'https://sales.cccinfotech.com/l/978703/2026-09-10/65qlm';
+                    tempForm.target = 'pardot_hidden_iframe';
+                    tempForm.style.display = 'none';
+
+                    const formData = new FormData(form);
+                    formData.forEach((val, key) => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = key;
+                        input.value = val;
+                        tempForm.appendChild(input);
+                    });
+
+                    // Add standard name fallbacks
+                    const fieldMapFallback = {
+                        'last_name': document.getElementById('fullname')?.value || '',
+                        'email': document.getElementById('email')?.value || '',
+                        'phone': document.getElementById('phone')?.value || '',
+                        'comments': document.getElementById('message')?.value || '',
+                        'Web_Page_Name': document.getElementById('page_name')?.value || '',
+                        'Batch_Name': document.getElementById('user_ip')?.value || ''
+                    };
+                    Object.keys(fieldMapFallback).forEach(k => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = k;
+                        input.value = fieldMapFallback[k];
+                        tempForm.appendChild(input);
+                    });
+
+                    document.body.appendChild(tempForm);
+                    tempForm.submit();
+
+                    setTimeout(() => {
+                        if (tempForm && tempForm.parentNode) {
+                            tempForm.parentNode.removeChild(tempForm);
+                        }
+                    }, 4000);
+                } catch (e) {
+                    console.error('Direct Pardot submission error:', e);
+                }
+
+                // 2. Submit to local/WP database & PHP cURL fallback
                 fetch('index.php', {
                         method: 'POST',
-                        body: formData
+                        body: new FormData(form)
                     })
                     .then(response => response.json())
                     .then(data => {
@@ -2997,12 +3354,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                             formTitle.style.display = 'none';
                             successBlock.style.display = 'flex';
 
-                            // Automatically reset and show the form again after 20 seconds
+                            // Show success message for 6 seconds and reload page
                             setTimeout(() => {
-                                if (successBlock.style.display === 'flex') {
-                                    resetBtn.click();
-                                }
-                            }, 20000);
+                                window.location.reload();
+                            }, 3000);
                         } else {
                             // Display error message nicely
                             alert(data.message || 'An error occurred. Please try again.');
@@ -3015,25 +3370,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fullname']) && isset(
                         alert('Could not submit form. Please verify local database connectivity.');
                     });
             }
-        });
-
-        // Reset button listener to send another message
-        resetBtn.addEventListener('click', () => {
-            // Reset fields
-            Object.keys(fields).forEach(key => {
-                const field = fields[key];
-                field.input.value = '';
-                field.dirty = false;
-
-                const parent = field.input.parentElement;
-                parent.classList.remove('has-error');
-                parent.classList.remove('has-success');
-            });
-
-            // Reset visibility
-            successBlock.style.display = 'none';
-            form.style.display = 'flex';
-            formTitle.style.display = 'block';
         });
 
         // Modal open/close logic
